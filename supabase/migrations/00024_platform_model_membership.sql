@@ -253,6 +253,25 @@ create trigger cna_verifications_guard_write
   before insert or update on public.cna_verifications
   for each row execute function kindred_internal.guard_cna_verification_write();
 
+-- Applications create a "connection", so who/what an application is about
+-- can never be changed after the fact (only its status / message).
+create or replace function kindred_internal.guard_job_application_write()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  if kindred_internal.is_privileged_writer() then
+    return new;
+  end if;
+  new.job_id := old.job_id;
+  new.cna_id := old.cna_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists job_applications_guard_write on public.job_applications;
+create trigger job_applications_guard_write
+  before update on public.job_applications
+  for each row execute function kindred_internal.guard_job_application_write();
+
 -- ---------------------------------------------------------------- founding caregivers
 -- First N approved caregivers get a free year, startup fee waived.
 -- Advisory lock serialises concurrent approvals so the cap can't be overrun.

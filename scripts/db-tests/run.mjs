@@ -181,6 +181,17 @@ check('connected member still sees the real bio', /Lisa Nguyen/.test(unmasked[0]
 const fmVer = await as(FM, `select * from public.cna_verifications where cna_id = '${L}'`);
 check('connected family cannot read verification rows', Array.isArray(fmVer) && fmVer.length === 0, fmVer);
 
+// family re-points an application on its own job at a different caregiver
+await db.exec(`insert into public.users values ('00000000-0000-0000-0000-0000000000e6','cna','Target Tia');
+  insert into public.cna_profiles (user_id, display_name, last_name, application_status, experience_hours) values ('00000000-0000-0000-0000-0000000000e6','Tia','Secret','approved',3000);
+  insert into public.cna_verifications (cna_id, type, status, expires_at) values ('00000000-0000-0000-0000-0000000000e6','l2bg','verified','2030-01-01'),('00000000-0000-0000-0000-0000000000e6','identity','verified',null),('00000000-0000-0000-0000-0000000000e6','insurance','verified','2030-01-01');`);
+const T='00000000-0000-0000-0000-0000000000e6';
+await as(FF, `update public.job_applications set cna_id = '${T}' where job_id = '11111111-1111-1111-1111-111111111111'`);
+const repoint = (await db.query(`select cna_id from public.job_applications where job_id = '11111111-1111-1111-1111-111111111111'`)).rows;
+check('EXPLOIT 11: family cannot re-point an application at another caregiver', repoint.every(r => r.cna_id !== T), repoint);
+const ffTia = await as(FF, `select * from public.caregiver_cards(array['${T}']::uuid[])`);
+check('EXPLOIT 11b: no identity unlock from re-pointing', Array.isArray(ffTia) && ffTia.length === 0, ffTia);
+
 let fail = 0;
 for (const r of results) { console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}`); if (!r.ok) { fail++; console.log('      ', JSON.stringify(r.detail)); } }
 console.log(`\n${results.length - fail}/${results.length} passed`);

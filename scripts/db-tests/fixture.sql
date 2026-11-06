@@ -46,6 +46,7 @@ create policy jobs_select_owner on public.jobs for select using (client_id = aut
 create policy jobs_select_open_for_cnas on public.jobs for select using (status in ('open','in_review') and kindred_internal.current_user_role() = 'cna');
 create policy job_applications_insert_cna on public.job_applications for insert with check (cna_id = auth.uid());
 create policy job_applications_select on public.job_applications for select using (cna_id = auth.uid());
+create policy job_applications_update_parties on public.job_applications for update using (cna_id = auth.uid() or exists (select 1 from public.jobs j where j.id = job_applications.job_id and j.client_id = auth.uid()));
 create policy message_threads_insert_party on public.message_threads for insert with check (participant_a = auth.uid() or participant_b = auth.uid());
 create policy message_threads_select on public.message_threads for select using (participant_a = auth.uid() or participant_b = auth.uid());
 create policy users_self on public.users for select using (id = auth.uid());
