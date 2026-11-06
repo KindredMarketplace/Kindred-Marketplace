@@ -11,9 +11,19 @@ import type { AccessPlan, AccessSnapshot } from './membership-shared';
 
 type Client = SupabaseClient<Database>;
 
+const looksReal = (v: string, prefix: string) =>
+  v.startsWith(prefix) && !/PASTE|YOUR_|x{3,}/i.test(v);
+
+/**
+ * Checkout is only offered when BOTH the secret key and the webhook secret are
+ * set. Without the webhook, Stripe would take the payment but Kindred would
+ * never hear about it, so the membership would never turn on.
+ */
 export function isStripeConfigured(): boolean {
-  const key = process.env.STRIPE_SECRET_KEY ?? '';
-  return key.startsWith('sk_') && !key.includes('PASTE');
+  return (
+    looksReal(process.env.STRIPE_SECRET_KEY ?? '', 'sk_') &&
+    looksReal(process.env.STRIPE_WEBHOOK_SECRET ?? '', 'whsec_')
+  );
 }
 
 export async function getMyAccess(supabase: Client): Promise<AccessSnapshot | null> {
