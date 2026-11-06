@@ -1416,7 +1416,22 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "memberships_plan_key_fkey"
+            columns: ["plan_key"]
+            isOneToOne: false
+            referencedRelation: "access_plans"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "memberships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       message_threads: {
         Row: {
@@ -2760,84 +2775,84 @@ export type Database = {
         Args: never
         Returns: {
           availability_status: Database["public"]["Enums"]["cna_availability_status"]
-          bio: string | null
-          display_name: string | null
-          experience_hours: number | null
-          gender: string | null
-          headline: string | null
-          hourly_rate_cents: number | null
+          bio: string
+          display_name: string
+          experience_hours: number
+          gender: string
+          headline: string
+          hourly_rate_cents: number
           identity_unlocked: boolean
-          languages: string[] | null
-          last_name: string | null
-          photo_url: string | null
-          rating_avg: number | null
-          rating_count: number | null
-          service_radius_miles: number | null
-          service_zip: string | null
+          languages: string[]
+          last_name: string
+          photo_url: string
+          rating_avg: number
+          rating_count: number
+          service_radius_miles: number
+          service_zip: string
           services: string[]
           user_id: string
-          years_experience: number | null
+          years_experience: number
+        }[]
+      }
+      browse_open_jobs: {
+        Args: never
+        Returns: {
+          budget_max_cents: number
+          budget_min_cents: number
+          city: string
+          description: string
+          details_unlocked: boolean
+          hours_per_week: number
+          id: string
+          posted_at: string
+          schedule_type: Database["public"]["Enums"]["job_schedule_type"]
+          services_needed: string[]
+          start_date: string
+          state: string
+          status: Database["public"]["Enums"]["job_status"]
+          street_address: string
+          title: string
+          zip: string
         }[]
       }
       caregiver_cards: {
         Args: { ids: string[] }
         Returns: {
           availability_status: Database["public"]["Enums"]["cna_availability_status"]
-          bio: string | null
-          completed_shifts_count: number | null
-          display_name: string | null
-          experience_hours: number | null
-          headline: string | null
-          hourly_rate_cents: number | null
-          languages: string[] | null
-          last_name: string | null
-          photo_url: string | null
-          rating_avg: number | null
-          rating_count: number | null
-          service_zip: string | null
+          bio: string
+          completed_shifts_count: number
+          display_name: string
+          experience_hours: number
+          headline: string
+          hourly_rate_cents: number
+          languages: string[]
+          last_name: string
+          photo_url: string
+          rating_avg: number
+          rating_count: number
+          service_zip: string
           tier: Database["public"]["Enums"]["cna_tier"]
           user_id: string
-          years_experience: number | null
-        }[]
-      }
-      browse_open_jobs: {
-        Args: never
-        Returns: {
-          budget_max_cents: number | null
-          budget_min_cents: number | null
-          city: string | null
-          description: string | null
-          details_unlocked: boolean
-          hours_per_week: number | null
-          id: string
-          posted_at: string | null
-          schedule_type: Database["public"]["Enums"]["job_schedule_type"]
-          services_needed: string[] | null
-          start_date: string | null
-          state: string | null
-          status: Database["public"]["Enums"]["job_status"]
-          street_address: string | null
-          title: string
-          zip: string | null
-        }[]
-      }
-      my_access: {
-        Args: never
-        Returns: {
-          current_period_end: string | null
-          founding: boolean
-          founding_slots_left: number
-          is_listed: boolean | null
-          is_member: boolean
-          meets_standard: boolean | null
-          membership_status: Database["public"]["Enums"]["membership_status"]
-          role: Database["public"]["Enums"]["user_role"]
+          years_experience: number
         }[]
       }
       earth: { Args: never; Returns: number }
       miles_between: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
+      }
+      my_access: {
+        Args: never
+        Returns: {
+          current_period_end: string
+          founding: boolean
+          founding_slots_left: number
+          is_listed: boolean
+          is_member: boolean
+          meets_standard: boolean
+          membership_status: Database["public"]["Enums"]["membership_status"]
+          role: Database["public"]["Enums"]["user_role"]
+        }[]
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
@@ -2903,7 +2918,6 @@ export type Database = {
         | "withdrawn"
         | "accepted"
       job_schedule_type: "one_time" | "recurring" | "live_in" | "on_call"
-      membership_status: "none" | "active" | "comped" | "past_due" | "canceled"
       job_status:
         | "draft"
         | "open"
@@ -2911,6 +2925,7 @@ export type Database = {
         | "filled"
         | "cancelled"
         | "expired"
+      membership_status: "none" | "active" | "comped" | "past_due" | "canceled"
       notification_channel: "in_app" | "email" | "sms" | "push"
       notification_type:
         | "job_match"
@@ -3184,7 +3199,6 @@ export const Constants = {
         "accepted",
       ],
       job_schedule_type: ["one_time", "recurring", "live_in", "on_call"],
-      membership_status: ["none", "active", "comped", "past_due", "canceled"],
       job_status: [
         "draft",
         "open",
@@ -3193,6 +3207,7 @@ export const Constants = {
         "cancelled",
         "expired",
       ],
+      membership_status: ["none", "active", "comped", "past_due", "canceled"],
       notification_channel: ["in_app", "email", "sms", "push"],
       notification_type: [
         "job_match",
