@@ -5,8 +5,8 @@
  * and three fake member testimonials. Community is a Phase-2 idea (moderation is
  * hard, and there are no members yet). So: the vision of what the community will
  * offer stays, the fake events become an honest "coming once we have members"
- * state, and the fake testimonials are dropped. No Pathway link (that path is
- * currently hidden).
+ * state, and the fake testimonials are dropped. No become-a-CNA or school
+ * pathway promos: Kindred is for caregivers who are already working.
  */
 
 import Link from 'next/link';
@@ -16,12 +16,12 @@ import { SiteFooter } from '@/components/SiteFooter';
 export const dynamic = 'force-dynamic';
 
 const FEATURES: [string, string, string][] = [
-  ['💬', 'Discussion spaces', 'Places to talk through dementia care, hospice, rate-setting, hard clients, and self-care — with other caregivers, not corporate.'],
-  ['🗓', 'Local meetups', 'Coffee and conversation in Kindred cities. Some educational, some just venting over pastries. Both matter.'],
-  ['🎓', 'Skills workshops', 'Sessions on dementia, safe transfers, hospice, and the money side of caregiving — live, with recordings.'],
-  ['🤝', 'Mentor matching', 'New caregivers paired with experienced ones who’ve been in their shoes. Real talk, no expectations.'],
-  ['📚', 'CEU support', 'A path to knock out Florida continuing-education hours without paying out of pocket.'],
-  ['🌱', 'Career path help', 'Thinking about LPN or RN school? Guidance on a part-time path that doesn’t blow up your income.'],
+  ['💬', 'Discussion spaces', 'Places to talk through dementia care, hospice, rate-setting, hard days, and self-care, with other caregivers instead of a corporate office.'],
+  ['🗓', 'Local meetups', 'Coffee and conversation in the areas Kindred serves. Some educational, some just venting over pastries. Both matter.'],
+  ['🎓', 'Skills workshops', 'Sessions on dementia, safe transfers, hospice, and the business side of working on your own, live with recordings.'],
+  ['🤝', 'Mentor matching', 'Caregivers newer to independent work paired with experienced ones who have been in their shoes. Real talk, no expectations.'],
+  ['📚', 'Continuing education', 'Help finding Florida continuing-education options that fit around a working caregiver\u2019s schedule.'],
+  ['🧾', 'Working on your own', 'Plain guidance on setting your rate, agreeing on terms with families, and handling your own taxes.'],
 ];
 
 export default function CommunityPage() {
@@ -37,8 +37,8 @@ export default function CommunityPage() {
         </h1>
         <p className="text-lg text-ink/70 max-w-2xl mx-auto leading-relaxed">
           We&apos;re building a space for Kindred caregivers to swap stories, ask hard questions, and
-          remind each other this work matters. Free, member-only, no recruiters — and coming as our
-          community grows.
+          remind each other this work matters. Member-only, no recruiters, and coming as our community
+          grows.
         </p>
       </section>
 
@@ -64,7 +64,7 @@ export default function CommunityPage() {
           <h2 className="font-display text-3xl md:text-4xl font-light mb-4">The calendar fills as we grow</h2>
           <p className="text-ink/70 leading-relaxed max-w-xl mx-auto">
             Workshops and meetups will be scheduled here once there are members to gather. We&apos;d
-            rather show you a real calendar than a fake one — so this stays empty until it isn&apos;t.
+            rather show you a real calendar than a fake one, so this stays empty until it isn&apos;t.
           </p>
         </div>
       </section>
@@ -72,8 +72,8 @@ export default function CommunityPage() {
       {/* CTA */}
       <section className="bg-deepteal text-cream py-16">
         <div className="max-w-[900px] mx-auto px-6 text-center">
-          <h3 className="font-display text-4xl md:text-5xl font-light mb-3">All of this comes free with Kindred</h3>
-          <p className="text-cream/85 mb-7 max-w-xl mx-auto">Join as a caregiver to be part of it as it opens. No fees, no upsells.</p>
+          <h3 className="font-display text-4xl md:text-5xl font-light mb-3">Included with your Kindred membership</h3>
+          <p className="text-cream/85 mb-7 max-w-xl mx-auto">Join as a caregiver to be part of it as it opens. No extra cost, no upsells.</p>
           <Link href="/apply" className="inline-flex bg-cream text-deepteal px-6 py-3 rounded-full text-sm font-medium hover:bg-cream/90 transition">Apply now</Link>
         </div>
       </section>

@@ -7,17 +7,18 @@ created: 2026-11-05
 
 # Kindred: 90-Day Implementation Plan
 
-**Launch target: Jan 24, 2027** (12 weeks from today, 2026-11-05). One phase is roughly one focused build session. Phases 1 through 6 are launch-critical. Phase 7 is the store-app follow-on.
+**Launch target: February 1, 2027** (moved from Jan 24 on 2026-11-06). In-home care only: no facilities / B2B (decided Oct 2026; the facility HTML mocks stay in Front-End/ for reference only). Phase 7 is the store-app follow-on.
 
-| Phase | Weeks | Title | Ships |
+| Phase | Dates | Title | Ships |
 |---|---|---|---|
-| 1 | Nov 5 | **Business-model foundation** | Build passes; K brand; installable PWA; B2B archived; memberships + founding 25; Kindred Standard; locked preview with DB-level redaction; Stripe Checkout + webhook |
-| 2 | Nov 9 – 22 | Caregiver onboarding to "listed" | Document upload for ID / L2 / insurance on the compliance page; admin verify panel with expiry; experience-hours capture in /apply; "You're listed" state; recommended insurance carriers list |
-| 3 | Nov 23 – Dec 6 | Family experience | Wire browse filters (rate, availability, languages, care types); full profile page that answers every question up front (Marcus's test); membership-gated messaging + job posting; family FAQ ("you are the employer", HomePay pointer) |
-| 4 | Dec 7 – 20 | Distance + matching | Google Maps key; caregiver work radius / drawn area; family distance shown; jobs-near-me for caregivers; email notifications (Resend) for messages, applications, verification expiring |
-| 5 | Dec 21 – Jan 10 | Trust loop + polish | Reviews after hire; report / block; legal pages final (attorney input); copy pass for the new model; empty states; accessibility pass; Sentry |
-| 6 | Jan 11 – 24 | Launch hardening | Playwright E2E for both journeys; RLS audit; Supabase advisors clean; Vercel prod at app.kindredmarketplace.com; Stripe live keys; landing → app links; founding-25 recruitment live |
-| 7 | Post-launch | Store apps | Capacitor wrapper for iOS / Android around the PWA, push notifications, store listings |
+| 1 | Nov 5 – 6 ✅ | **Business-model foundation** | Build passes; K brand; installable PWA; B2B archived; memberships + founding 25; Kindred Standard; locked preview with DB-level redaction; Stripe Checkout + webhook; migrations 00023–00026 live; platform-model copy across every page; facilities removed; Pricing in the top nav |
+| 2 | Nov 7 – 22 | Caregiver onboarding to "listed" | ID / L2 / insurance uploads on the compliance page (private storage, signed URLs); self-reported hours in /apply (admin confirms); admin review queue; "You're listed" state; private avatars bucket |
+| 3 | Nov 23 – Dec 6 | Family experience | Real browse filters; full profile page (Marcus's "does she have this?" test); member-gated messaging + job posts; family FAQ (household employer, HomePay pointer); comp family membership from admin |
+| 4 | Dec 7 – 20 | Distance + matching + notifications | Google Maps key; caregiver work radius; distance shown; jobs-near-me; email notifications (Resend) for messages, applications, verification expiring |
+| 5 | Dec 21 – Jan 10 | Trust loop + polish | Reviews after hire (through a function, not public rows); report / block; legal pages final with attorney; accessibility pass; Sentry; Next `middleware` → `proxy` rename; React 19 |
+| 6 | Jan 11 – 25 | Launch hardening | Full pentest re-run; Zod 4; Playwright E2E for both journeys; Supabase advisors clean; leaked-password protection; Vercel production on kindredmarketplace.com; Stripe live keys + dashboard webhook |
+| 🚀 | **Feb 1** | **Launch** | Founding-25 recruiting live, ads pointed at the app |
+| 7 | After launch | Store apps | Capacitor wrapper for the App Store / Play Store, push notifications |
 
 ## Phase 1 tasks (this session)
 

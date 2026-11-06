@@ -17,10 +17,10 @@ import { SiteFooter } from '@/components/SiteFooter';
 export const dynamic = 'force-dynamic';
 
 const VALUES: [string, string][] = [
-  ['Caregivers keep what they charge.', 'Our service fee is paid by the family, on top — never taken out of the caregiver\u2019s rate. This is non-negotiable, even when it would make our economics easier.'],
-  ['Families and caregivers choose each other.', 'No algorithmic forced matches, no paying for placement. The relationship is the product — we just make the introduction safe.'],
+  ['Caregivers keep what they charge.', 'Families pay caregivers directly. Kindred never processes, holds, or takes any part of a care payment. We make money only from memberships, and that is non-negotiable, even when it would make our economics easier.'],
+  ['Families and caregivers choose each other.', 'No algorithmic forced matches, no paying for placement. The relationship is the product. We just make the introduction safe.'],
   ['Verification, not surveillance.', 'We vet thoroughly because families need confidence. We don\u2019t track caregivers between shifts or mine their lives off the clock.'],
-  ['Honest pricing, no surprise fees.', 'You\u2019ll see the all-in cost before you book. If anything ever changes, you\u2019ll see the change clearly — never buried in a quiet email.'],
+  ['Honest pricing, no surprise fees.', 'Membership is a one-time startup fee plus a monthly fee, and the current prices are always on our pricing page. If they ever change, we\u2019ll tell you clearly, never in a quiet email.'],
   ['Caregivers come first in a conflict.', 'If a family mistreats a caregiver, we side with the caregiver. That\u2019s a commitment we intend to honor even when it costs us a paying customer.'],
   ['Dignity, always.', 'The people receiving care are adults with histories, preferences, and pride. We will never build anything that infantilizes them. This is the heart of Kindred.'],
 ];
@@ -38,8 +38,8 @@ export default function AboutPage() {
           <span className="italic font-medium text-gradient">we wish our families had.</span>
         </h1>
         <p className="text-xl text-ink/75 max-w-3xl leading-relaxed">
-          Kindred connects Florida families directly with vetted, independent CNAs — no agency in the
-          middle taking the bigger half. Caregivers set their own rates and keep what they charge.
+          Kindred connects Florida families directly with vetted, independent CNAs, with no agency in
+          the middle taking the bigger half. Caregivers set their own rates and keep what they charge.
           Families find someone they actually trust. That&apos;s the whole idea.
         </p>
       </section>
@@ -51,18 +51,18 @@ export default function AboutPage() {
           <h2 className="font-display text-3xl md:text-4xl font-light mb-6">Why we started this</h2>
           <div className="space-y-5 text-ink/80 leading-relaxed">
             <p>
-              Kindred is founder-led, built by someone who has done this work — and saw, up close, how
+              Kindred is founder-led, built by someone who has done this work and saw, up close, how
               the system treats the people doing the caring. Skilled caregivers paid a fraction of
               what families are charged. Agencies taking the cream off the top. Good people leaving a
               field that needs them.
             </p>
             <p>
               We think the people doing some of the most important work in healthcare deserve to be
-              paid like the professionals they are — and that families deserve to find them without a
+              paid like the professionals they are, and that families deserve to find them without a
               middleman in the way.
             </p>
             <p className="text-sm text-ink/55 italic">
-              (The founder&apos;s full story goes here, in their own words — coming soon.)
+              (The founder&apos;s full story goes here, in their own words. Coming soon.)
             </p>
           </div>
         </div>
@@ -89,8 +89,8 @@ export default function AboutPage() {
           <h2 className="font-display text-3xl md:text-4xl font-light mb-6">Early, and on purpose</h2>
           <p className="text-ink/75 leading-relaxed max-w-2xl mb-8">
             We&apos;re a small founding team, starting in Gainesville and the surrounding North Central
-            Florida counties. Right now we&apos;re vetting our founding caregivers — one real interview
-            at a time — and getting the fundamentals right before we grow. Florida-first, carefully,
+            Florida counties. Right now we&apos;re vetting our founding caregivers, one real interview
+            at a time, and getting the fundamentals right before we grow. Florida-first, carefully,
             for as long as it takes to do this well.
           </p>
           <div className="grid sm:grid-cols-3 gap-4">

@@ -7,6 +7,7 @@
 
 import Link from 'next/link';
 import { LegalShell } from '@/components/LegalShell';
+import { CONTACT_EMAIL } from '@/lib/site';
 
 export const metadata = {
   title: 'Terms of Service — Kindred',
@@ -23,6 +24,9 @@ export default function TermsPage() {
           <div className="text-xs font-mono uppercase tracking-widest text-ink/40 mb-3">Legal</div>
           <h1 className="font-display text-5xl font-medium tracking-tight mb-3">Terms of Service</h1>
           <p className="text-sm text-ink/50 font-mono">Last updated: {LAST_UPDATED}</p>
+          <p className="mt-3 text-sm bg-butter/40 border border-butter rounded-xl px-4 py-3 text-ink/80">
+            Draft. These terms are being reviewed by our attorney before Kindred launches and may change.
+          </p>
         </div>
 
         <div className="space-y-10 text-ink/80 leading-relaxed text-[15px]">
@@ -39,40 +43,37 @@ export default function TermsPage() {
           <Sec title="2. Eligibility">
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li>You must be at least 18 years old to create an account.</li>
-              <li>CNAs must hold a current, valid Florida CNA certification and consent to a Level 2 background check.</li>
-              <li>Business accounts (facilities) must provide a valid Florida facility license and EIN.</li>
+              <li>Caregivers must meet the <Link href="/kindred-standard" className="text-deepteal hover:text-coral underline">Kindred Standard</Link> before families can find them, including a Level 2 background check, a verified ID, their own liability insurance and at least 1,500 hours of hands-on experience.</li>
               <li>You must provide accurate, current, and complete information at registration and keep it updated.</li>
             </ul>
           </Sec>
 
           <Sec title="3. Account Types">
-            <p>Kindred has three account types:</p>
+            <p>Kindred has two account types. Kindred is for in-home care only.</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
-              <li><strong>Client (Family):</strong> posts jobs, browses and hires CNAs, and manages billing.</li>
-              <li><strong>CNA (Caregiver):</strong> creates a professional profile, applies for jobs, and receives payment through Stripe Connect.</li>
-              <li><strong>Business (Facility):</strong> posts shift needs in bulk, manages rosters, and receives net-30 invoicing.</li>
+              <li><strong>Family:</strong> browses caregivers, posts what they need, messages and hires caregivers directly.</li>
+              <li><strong>Caregiver:</strong> creates a professional profile, sets their own rate, and applies to family job posts.</li>
             </ul>
           </Sec>
 
           <Sec title="4. Marketplace Rules">
             <Sub title="For Clients">
               <ul className="list-disc pl-5 space-y-1 mt-2">
-                <li>You are hiring an independent CNA, not a Kindred employee.</li>
-                <li>You are responsible for ensuring the care environment is safe and appropriate.</li>
-                <li>You agree to pay the agreed hourly rate through the Kindred platform. Off-platform payments bypass our protections for both parties.</li>
+                <li>You are hiring an independent caregiver directly. Kindred is not their employer and is not a home health agency or nurse registry.</li>
+                <li>You and your caregiver agree on the work, the schedule and the rate between yourselves, and you pay your caregiver directly. Kindred does not process, hold or take any part of those payments.</li>
+                <li>You are responsible for ensuring the care environment is safe and appropriate, and for any obligations you may have as a household employer.</li>
               </ul>
             </Sub>
-            <Sub title="For CNAs">
+            <Sub title="For Caregivers">
               <ul className="list-disc pl-5 space-y-1 mt-2">
-                <li>You are an independent contractor. Kindred is not your employer and does not provide workers' compensation, health benefits, or employment protections.</li>
-                <li>You are responsible for maintaining your CNA certification, carrying appropriate liability insurance, and complying with applicable Florida law.</li>
-                <li>You agree to complete booked shifts or provide adequate notice. Repeated no-shows or cancellations may result in account suspension.</li>
+                <li>Kindred is not your employer and does not pay you, provide workers&apos; compensation, health benefits, or employment protections. Families pay you directly at the rate you set.</li>
+                <li>You are responsible for keeping your credentials current, carrying your own liability insurance, and complying with applicable Florida law.</li>
+                <li>You agree to give families honest information about your experience and availability, and reasonable notice if you can&apos;t make a commitment.</li>
               </ul>
             </Sub>
             <Sub title="Prohibited conduct (all users)">
               <ul className="list-disc pl-5 space-y-1 mt-2">
                 <li>Creating false profiles, misrepresenting credentials, or impersonating another person.</li>
-                <li>Circumventing the Kindred platform to arrange care or payments off-platform.</li>
                 <li>Harassment, discrimination, or threatening behavior toward any user.</li>
                 <li>Sharing access credentials or allowing unauthorized users to access your account.</li>
                 <li>Using the platform for any illegal purpose.</li>
@@ -80,24 +81,24 @@ export default function TermsPage() {
             </Sub>
           </Sec>
 
-          <Sec title="5. Payments and Fees">
+          <Sec title="5. Membership">
             <p>
-              Payments are processed through Stripe Connect. Client funds are held in escrow and released to the CNA after shift completion. Kindred charges a service fee on each transaction (see your account settings for the current rate applicable to your tier). Rates and fees are subject to change with 14 days' notice.
+              Kindred charges for access to the platform, never for care. Full access requires a membership: a one-time startup fee and a monthly fee, shown on our <Link href="/pricing" className="text-deepteal hover:text-coral underline">pricing page</Link>. Memberships are billed by Stripe and renew monthly until you cancel. You can cancel anytime from your Membership page, and access continues to the end of the period you&apos;ve paid for. Prices may change with at least 30 days&apos; notice.
             </p>
             <p className="mt-3">
-              Business accounts are invoiced monthly on net-30 terms. Late payments may accrue interest at 1.5% per month.
+              Kindred does not charge a percentage of care, add fees to a caregiver&apos;s rate, or handle any payment between a family and a caregiver.
             </p>
           </Sec>
 
-          <Sec title="6. Cancellations and Refunds">
+          <Sec title="6. Arrangements Between Families and Caregivers">
             <p>
-              Cancellations made more than 24 hours before a scheduled shift are free of charge. Cancellations within 24 hours may incur a cancellation fee. CNA no-shows are eligible for a full refund. Final cancellation and refund policies are detailed in your account settings and may be updated from time to time.
+              Scheduling, cancellations and payment for care are agreed directly between each family and their caregiver. Kindred is not a party to those arrangements.
             </p>
           </Sec>
 
           <Sec title="7. Reviews and Ratings">
             <p>
-              After a completed shift, clients may leave a review and rating for their caregiver. Reviews must be honest and based on direct experience. Kindred reserves the right to remove reviews that violate our community standards.
+              Families may leave a review and rating for a caregiver they have worked with. Reviews must be honest and based on direct experience. Kindred reserves the right to remove reviews that violate our community standards.
             </p>
           </Sec>
 
@@ -145,7 +146,7 @@ export default function TermsPage() {
               <p className="font-medium">Kindred Marketplace LLC</p>
               <p className="text-ink/70 mt-1">Gainesville, Florida</p>
               <p className="text-ink/70">
-                <a href="mailto:legal@kindred.care" className="text-deepteal hover:text-coral underline">legal@kindred.care</a>
+                <a href={`mailto:${CONTACT_EMAIL}`} className="text-deepteal hover:text-coral underline">{CONTACT_EMAIL}</a>
               </p>
             </div>
           </Sec>

@@ -79,7 +79,7 @@ export function PostJobForm({
         <input
           type="text"
           name="title"
-          placeholder={`e.g. 'Morning care${recipientName ? ' for ' + recipientName.split(' ')[0] : ''} — 4 hours, Mon/Wed/Fri'`}
+          placeholder={`e.g. 'Morning care${recipientName ? ' for ' + recipientName.split(' ')[0] : ''}, 4 hours, Mon/Wed/Fri'`}
           className="w-full px-4 py-3 border border-ink/15 rounded-xl text-base focus:outline-none focus:border-teal"
         />
         {fieldErr('title') && <p className="text-xs text-coral mt-1.5">{fieldErr('title')}</p>}
@@ -185,7 +185,7 @@ export function PostJobForm({
           </div>
         </div>
         <div className="mt-4 bg-mist/40 border border-teal/20 rounded-xl p-3 text-xs text-ink/70 leading-relaxed">
-          💡 <strong>Heads up:</strong> A service fee of 10–15% applies on top (lower for top-rated CNAs).
+          💡 <strong>Heads up:</strong> You pay your caregiver directly, at the rate you agree on together. Kindred doesn&rsquo;t add a fee or take a cut.
         </div>
       </div>
 

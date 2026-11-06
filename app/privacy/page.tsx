@@ -7,6 +7,7 @@
 
 import Link from 'next/link';
 import { LegalShell } from '@/components/LegalShell';
+import { CONTACT_EMAIL } from '@/lib/site';
 
 export const metadata = {
   title: 'Privacy Policy — Kindred',
@@ -27,7 +28,7 @@ export default function PrivacyPage() {
 
         <div className="space-y-10 text-ink/80 leading-relaxed text-[15px]">
           <p>
-            Kindred Marketplace LLC ("Kindred," "we," "us," or "our") operates the Kindred platform — a marketplace connecting families with independent Certified Nursing Assistants (CNAs) in Florida. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and services.
+            Kindred Marketplace LLC ("Kindred," "we," "us," or "our") operates the Kindred platform, a marketplace connecting families with independent Certified Nursing Assistants (CNAs) for in-home care in Florida. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and services.
           </p>
           <p>
             By using Kindred, you agree to the practices described in this policy.
@@ -38,9 +39,9 @@ export default function PrivacyPage() {
               <ul className="list-disc pl-5 space-y-1 mt-2">
                 <li><strong>Account registration:</strong> name, email address, phone number, ZIP code, and password.</li>
                 <li><strong>CNA profiles:</strong> bio, photo, license number, years of experience, hourly rate, service area, and availability.</li>
-                <li><strong>Care recipient information:</strong> name, medical conditions, allergies, medications, and care preferences — shared by families with their chosen caregiver.</li>
-                <li><strong>Verification documents:</strong> CNA license, CPR card, background check consent, and immunization records.</li>
-                <li><strong>Payment information:</strong> processed by Stripe; we do not store raw card numbers.</li>
+                <li><strong>Care recipient information:</strong> name, medical conditions, allergies, medications, and care preferences, shared by families with their chosen caregiver.</li>
+                <li><strong>Verification documents:</strong> CNA license, government ID, Level 2 background check consent, and proof of liability insurance.</li>
+                <li><strong>Membership payment information:</strong> processed by Stripe; we do not store raw card numbers. Stripe processes Kindred membership payments only. Kindred never handles payments between families and caregivers.</li>
                 <li><strong>Messages:</strong> communications sent through the Kindred messaging system.</li>
                 <li><strong>Job postings and applications.</strong></li>
               </ul>
@@ -56,7 +57,7 @@ export default function PrivacyPage() {
               <ul className="list-disc pl-5 space-y-1 mt-2">
                 <li>Background check results from our screening partner.</li>
                 <li>License verification data from the Florida Department of Health.</li>
-                <li>Payment data from Stripe Connect.</li>
+                <li>Membership payment status from Stripe.</li>
               </ul>
             </Sub>
           </Sec>
@@ -65,9 +66,9 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li>Create and maintain your account and profile.</li>
               <li>Match families with caregivers by location, services, and availability.</li>
-              <li>Process payments and payouts through Stripe Connect.</li>
+              <li>Process Kindred membership payments through Stripe. We do not process, hold, or receive payments between families and caregivers.</li>
               <li>Verify CNA credentials and facilitate background checks.</li>
-              <li>Send transactional notifications (booking confirmations, messages, payment receipts).</li>
+              <li>Send transactional notifications (new messages, account updates, membership receipts).</li>
               <li>Provide customer support and resolve disputes.</li>
               <li>Improve the platform through analytics and usage data.</li>
               <li>Comply with legal obligations, including HIPAA where applicable.</li>
@@ -77,10 +78,10 @@ export default function PrivacyPage() {
 
           <Sec title="3. How We Share Your Information">
             <Sub title="With other platform users">
-              <p className="mt-1">CNA profiles are visible to families searching for caregivers. Full contact details are only shared after a booking is confirmed. Care recipient information is shared only with the family's hired caregiver.</p>
+              <p className="mt-1">CNA profiles are visible to families searching for caregivers. Full contact details are only shared once a family and caregiver choose to work together. Care recipient information is shared only with the family's hired caregiver.</p>
             </Sub>
             <Sub title="With service providers">
-              <p className="mt-1">We share data with vetted vendors who help operate the platform: Stripe (payments), Supabase (hosting), our background check partner, and transactional email/SMS providers. Each vendor handling health-related data is required to sign a Business Associate Agreement (BAA).</p>
+              <p className="mt-1">We share data with vetted vendors who help operate the platform: Stripe (membership payments), Supabase (hosting), our background check partner, and transactional email/SMS providers. Each vendor handling health-related data is required to sign a Business Associate Agreement (BAA).</p>
             </Sub>
             <Sub title="For legal reasons">
               <p className="mt-1">We may disclose information if required by law, court order, or to protect user or public safety.</p>
@@ -92,7 +93,7 @@ export default function PrivacyPage() {
 
           <Sec title="4. Protected Health Information (PHI)">
             <p>
-              Some information on Kindred — such as a care recipient's medical conditions, medications, and care preferences — may constitute Protected Health Information (PHI) under HIPAA. We handle this information in accordance with our{' '}
+              Some information on Kindred (such as a care recipient's medical conditions, medications, and care preferences) may constitute Protected Health Information (PHI) under HIPAA. We handle this information in accordance with our{' '}
               <Link href="/hipaa" className="text-deepteal hover:text-coral underline">HIPAA Notice of Privacy Practices</Link>.
               We use HIPAA-compliant infrastructure, require BAAs from relevant vendors, and maintain audit logs of access to health-related data.
             </p>
@@ -116,7 +117,7 @@ export default function PrivacyPage() {
             </ul>
             <p className="mt-3">
               To exercise these rights, email{' '}
-              <a href="mailto:privacy@kindred.care" className="text-deepteal hover:text-coral underline">privacy@kindred.care</a>.
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-deepteal hover:text-coral underline">{CONTACT_EMAIL}</a>.
             </p>
           </Sec>
 
@@ -125,7 +126,7 @@ export default function PrivacyPage() {
           </Sec>
 
           <Sec title="9. Children's Privacy">
-            <p>Kindred is not directed at children under 18. We do not knowingly collect information from minors. Contact <a href="mailto:privacy@kindred.care" className="text-deepteal hover:text-coral underline">privacy@kindred.care</a> if you believe a minor has created an account.</p>
+            <p>Kindred is not directed at children under 18. We do not knowingly collect information from minors. Contact <a href={`mailto:${CONTACT_EMAIL}`} className="text-deepteal hover:text-coral underline">{CONTACT_EMAIL}</a> if you believe a minor has created an account.</p>
           </Sec>
 
           <Sec title="10. Changes to This Policy">
@@ -138,14 +139,14 @@ export default function PrivacyPage() {
               <p className="font-medium">Kindred Marketplace LLC</p>
               <p className="text-ink/70 mt-1">Gainesville, Florida</p>
               <p className="text-ink/70">
-                <a href="mailto:privacy@kindred.care" className="text-deepteal hover:text-coral underline">privacy@kindred.care</a>
+                <a href={`mailto:${CONTACT_EMAIL}`} className="text-deepteal hover:text-coral underline">{CONTACT_EMAIL}</a>
               </p>
             </div>
           </Sec>
 
           <div className="bg-butter/20 border border-butter/50 rounded-2xl p-5 text-sm text-ink/70">
             <span className="font-mono text-xs uppercase tracking-wider text-ink/40">📋 Internal note</span>
-            <p className="mt-2">Draft only — have a healthcare attorney review before public launch, particularly HIPAA and data retention sections.</p>
+            <p className="mt-2">Draft only. Have a healthcare attorney review before public launch, particularly HIPAA and data retention sections.</p>
           </div>
         </div>
       </main>

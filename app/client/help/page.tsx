@@ -3,12 +3,17 @@
  * in app/client/layout.tsx.
  *
  * This page is all static educational content (topic tiles, FAQ accordions,
- * contact card) — no per-user data, so it ports essentially verbatim. The
- * support phone/email are platform constants, not fabricated user data.
+ * contact card), no per-user data. Copy follows the business model: families
+ * pay caregivers directly, Kindred earns only from memberships (prices live
+ * on /pricing), and Kindred is private pay only. Contact is email only
+ * (CONTACT_EMAIL) until a real phone line exists.
  *
  * Accordions use native <details>/<summary> (styled in globals.css), so no
  * client JS is needed and this stays a server component.
  */
+
+import Link from 'next/link';
+import { CONTACT_EMAIL } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,49 +22,53 @@ type Faq = { q: string; a: React.ReactNode };
 const CAREGIVER_FAQS: Faq[] = [
   {
     q: 'How do I switch caregivers?',
-    a: 'Go to Browse, find someone new, and message them. Once you\u2019ve agreed on terms, you can pause your current caregiver from the Dashboard and book the new one. If you\u2019d like our help with the conversation, message Kindred Support and we\u2019ll guide you through it gently.',
+    a: 'Go to Browse, find someone new, and message them. Schedules and notice are arranged directly between you and the caregivers you work with, so let your current caregiver know with the notice you agreed on. If you\u2019d like help thinking it through, email us.',
   },
   {
     q: "What if my caregiver can't make it?",
-    a: 'They\u2019ll message you directly. You can also broadcast the shift to other qualified caregivers nearby. No-shows are rare, and you\u2019re never charged for a shift that didn\u2019t happen.',
+    a: 'They\u2019ll message you directly. Because you and your caregiver set the schedule together, it helps to agree up front on how much notice to give and what happens when a visit is missed. You pay your caregiver directly, for what the two of you agreed on.',
   },
   {
     q: 'Can I have more than one caregiver?',
-    a: 'Absolutely — and many families do. Each one has separate visits, messages, and billing, but they share the same care plan, so they all know about conditions, allergies, and routines.',
+    a: 'Yes, and many families do. Each arrangement (schedule, rate, and how you pay) is between you and that caregiver.',
   },
   {
-    q: 'How does Kindred verify caregivers?',
-    a: 'Every CNA on Kindred has a current Florida CNA license (verified with the state\u2019s MQA database), a Level 2 background check, and reference checks. "Verified" = all complete. "Top-Rated" = verified plus a strong track record of five-star shifts.',
+    q: 'How does Kindred vet caregivers?',
+    a: (<>Every caregiver meets the Kindred Standard: a personal interview, 1,500+ hours of hands-on experience, a Level 2 background check, a verified ID, and their own liability insurance. Read the details on the <Link href="/kindred-standard" className="text-deepteal hover:text-coral">Kindred Standard page</Link>.</>),
   },
 ];
 
 const BILLING_FAQS: Faq[] = [
   {
-    q: 'When am I charged?',
-    a: 'We charge once per month for the previous month\u2019s confirmed visits. You\u2019ll get an itemized email a few days before the charge — and you can see a running total any time on your Billing page.',
+    q: 'How do I pay my caregiver?',
+    a: 'Directly. You and your caregiver agree on the rate, the schedule, and how you\u2019ll pay (check, bank transfer, a payment app). Kindred never processes, holds, or takes any part of what you pay for care.',
   },
   {
-    q: 'How do I submit visits to my LTC insurance?',
-    a: 'On your Billing page, download visit logs for the month you need. We auto-generate the format carriers like Genworth, John Hancock, and Mutual of Omaha require, and can set up auto-send to your carrier.',
+    q: 'What does Kindred charge?',
+    a: (<>Kindred makes money only from memberships: a one-time startup fee plus a monthly fee. There&rsquo;s no service fee on care and no percentage of what you pay your caregiver. Current prices are on the <Link href="/pricing" className="text-deepteal hover:text-coral">pricing page</Link>, and you can manage your plan on your <Link href="/client/membership" className="text-deepteal hover:text-coral">Membership page</Link>.</>),
   },
   {
-    q: 'Does Medicare cover this?',
-    a: 'Generally, no — original Medicare doesn\u2019t cover routine non-medical home care. Some Medicare Advantage plans do, so check yours. For most clients, this is private-pay or covered by LTC insurance.',
+    q: 'Will my long-term-care insurance pay for this?',
+    a: 'Some long-term-care insurance policies may reimburse families for in-home care. You file the claim with your insurer yourself, so check your policy and keep a simple record of visits, hours, and what you paid. Your caregiver can help you keep that log.',
   },
   {
-    q: "What's the service fee, exactly?",
-    a: 'We charge a small platform fee on top of the caregiver\u2019s rate, lower for higher-tier caregivers. That\u2019s the only fee — no hidden charges, no booking fees, no surge pricing. It covers background checks, identity verification, payment processing, and support.',
+    q: 'Does Medicare or Medicaid cover this?',
+    a: 'Not through Kindred. Kindred is private pay only and doesn\u2019t bill Medicare, Medicaid, or any insurer. Original Medicare generally doesn\u2019t cover routine non-medical home care. Some Medicare Advantage plans offer limited in-home help through their own providers, so it\u2019s worth checking your plan.',
+  },
+  {
+    q: 'Am I my caregiver\u2019s employer?',
+    a: 'It depends on how you arrange the work. If you control when and how the work is done, you may be a household employer under IRS rules, which can mean employment taxes and a W-2. The IRS Household Employer\u2019s Tax Guide (Publication 926) explains it, and a tax professional can tell you what applies to you.',
   },
 ];
 
 const SAFETY_FAQS: Faq[] = [
   {
     q: 'What if something goes wrong during a visit?',
-    a: 'In an emergency, call 911 first. Then call our 24/7 incident line. For non-emergencies, open a dispute from the visit\u2019s receipt and we\u2019ll respond within one business day.',
+    a: 'In an emergency, call 911 first. Once everyone is safe, email us and tell us what happened so we can review the caregiver\u2019s account.',
   },
   {
     q: "Is my family member's information private?",
-    a: 'Yes. The care plan (conditions, medications, allergies, routines) is only shared with caregivers you\u2019ve actively hired — never visible to anyone browsing. Messages are encrypted.',
+    a: (<>Yes. You decide what to share with the caregivers you talk to, and we don&rsquo;t sell personal information. Our <Link href="/privacy" className="text-deepteal hover:text-coral">Privacy Policy</Link> has the details.</>),
   },
 ];
 
@@ -93,14 +102,14 @@ export default function ClientHelpPage() {
             Real questions, <span className="italic font-medium text-gradient">real humans.</span>
           </h1>
           <p className="text-ink/70 mt-4 max-w-xl mx-auto">
-            Search common questions, or talk to a real person — we answer within an hour during
-            business hours.
+            Search common questions, or email us and a real person on the Kindred team will
+            reply.
           </p>
 
           <div className="mt-8 max-w-xl mx-auto relative">
             <input
               type="text"
-              placeholder="Try 'how do I switch caregivers' or 'pause billing'"
+              placeholder="Try 'how do I pay my caregiver' or 'membership'"
               className="w-full pl-12 pr-4 py-4 bg-white border border-ink/15 rounded-full text-sm focus:outline-none focus:border-teal shadow-sm"
             />
             <span className="absolute left-5 top-1/2 -translate-y-1/2 text-ink/40">🔍</span>
@@ -115,8 +124,8 @@ export default function ClientHelpPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { href: '#caregivers', icon: '👥', title: 'Caregivers', sub: 'Hiring, switching, pausing' },
-              { href: '#billing-faq', icon: '💳', title: 'Billing', sub: 'Receipts, refunds, LTC claims' },
-              { href: '#safety', icon: '🛡️', title: 'Trust & safety', sub: 'Verifications, incidents, disputes' },
+              { href: '#billing-faq', icon: '💳', title: 'Paying for care', sub: 'Direct pay, membership, insurance' },
+              { href: '#safety', icon: '🛡️', title: 'Trust & safety', sub: 'Vetting, privacy, getting help' },
               { href: '#tech', icon: '📱', title: 'Using Kindred', sub: 'Account, messaging, settings' },
             ].map((t) => (
               <a key={t.href} href={t.href} className="card-hover bg-white border border-ink/10 rounded-2xl p-6 text-center">
@@ -135,7 +144,7 @@ export default function ClientHelpPage() {
         </section>
 
         <section id="billing-faq" className="mb-12 fade-up" style={{ animationDelay: '.2s' }}>
-          <h2 className="font-display text-3xl font-medium mb-6">Billing</h2>
+          <h2 className="font-display text-3xl font-medium mb-6">Paying for care</h2>
           <FaqList faqs={BILLING_FAQS} />
         </section>
 
@@ -150,7 +159,7 @@ export default function ClientHelpPage() {
             faqs={[
               {
                 q: 'Can my sibling get access too?',
-                a: 'Yes — go to Account settings → Family access and invite them by email. You choose whether they can view-only or also message caregivers and edit the care plan.',
+                a: 'Yes. Go to Account settings, then Family access, and invite them by email. You choose whether they can view only or also message caregivers and edit the care plan.',
               },
               {
                 q: 'Is there a mobile app?',
@@ -167,35 +176,27 @@ export default function ClientHelpPage() {
               <div className="text-xs font-mono uppercase tracking-widest text-ink/60 mb-3">Still need help?</div>
               <h2 className="font-display text-3xl font-medium mb-3">Talk to a real person.</h2>
               <p className="text-sm text-ink/75 leading-relaxed max-w-md">
-                Our support team is based in Florida and answers within an hour during business hours
-                (9 AM – 7 PM ET). For care emergencies, we're available 24/7.
+                Email us with your question and a real person on the Kindred team will reply. In an
+                emergency, always call 911 first.
               </p>
             </div>
             <div className="space-y-3">
-              <a href="/client/messages" className="flex items-center gap-4 p-4 bg-white border border-ink/10 rounded-2xl hover:bg-cream/60 transition">
-                <div className="w-11 h-11 rounded-full bg-deepteal text-cream flex items-center justify-center text-lg">💬</div>
-                <div className="flex-1">
-                  <div className="font-medium text-sm">Message Kindred Support</div>
-                  <div className="text-xs text-ink/60">Typically replies within an hour</div>
-                </div>
-                <span className="text-deepteal">→</span>
-              </a>
-              <a href="tel:8005552273" className="flex items-center gap-4 p-4 bg-white border border-ink/10 rounded-2xl hover:bg-cream/60 transition">
-                <div className="w-11 h-11 rounded-full bg-sage text-cream flex items-center justify-center text-lg">📞</div>
-                <div className="flex-1">
-                  <div className="font-medium text-sm">Call us</div>
-                  <div className="text-xs text-ink/60 font-mono">(800) 555-CARE · 24/7 for emergencies</div>
-                </div>
-                <span className="text-deepteal">→</span>
-              </a>
-              <a href="mailto:hello@kindredmarketplace.com" className="flex items-center gap-4 p-4 bg-white border border-ink/10 rounded-2xl hover:bg-cream/60 transition">
+              <a href={`mailto:${CONTACT_EMAIL}`} className="flex items-center gap-4 p-4 bg-white border border-ink/10 rounded-2xl hover:bg-cream/60 transition">
                 <div className="w-11 h-11 rounded-full bg-sky text-cream flex items-center justify-center text-lg">✉️</div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm">Email</div>
-                  <div className="text-xs text-ink/60 font-mono">hello@kindredmarketplace.com</div>
+                  <div className="text-xs text-ink/60 font-mono break-all">{CONTACT_EMAIL}</div>
                 </div>
                 <span className="text-deepteal">→</span>
               </a>
+              <Link href="/client/membership" className="flex items-center gap-4 p-4 bg-white border border-ink/10 rounded-2xl hover:bg-cream/60 transition">
+                <div className="w-11 h-11 rounded-full bg-deepteal text-cream flex items-center justify-center text-lg">⭐</div>
+                <div className="flex-1">
+                  <div className="font-medium text-sm">Your membership</div>
+                  <div className="text-xs text-ink/60">Plan and status</div>
+                </div>
+                <span className="text-deepteal">→</span>
+              </Link>
             </div>
           </div>
         </section>

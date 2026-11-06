@@ -10,10 +10,11 @@
 
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
+import { CONTACT_EMAIL } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
 
-const PRESS_EMAIL = 'kindredhhcmarketplace@gmail.com';
+const PRESS_EMAIL = CONTACT_EMAIL;
 
 export default function PressPage() {
   return (
@@ -27,7 +28,7 @@ export default function PressPage() {
         </h1>
         <p className="text-lg text-ink/75 max-w-2xl leading-relaxed">
           For reporters and researchers covering home care, the senior caregiving labor market, or
-          healthcare marketplaces. We&apos;re an early-stage company — so rather than dress up a press
+          healthcare marketplaces. We&apos;re an early-stage company, so rather than dress up a press
           page with coverage we don&apos;t have yet, here&apos;s the honest version and a direct line
           to us.
         </p>
@@ -38,7 +39,7 @@ export default function PressPage() {
         <div className="bg-white border border-ink/10 rounded-3xl p-8 md:p-10 text-center">
           <h2 className="font-display text-2xl md:text-3xl font-medium mb-3">We&apos;re just getting started.</h2>
           <p className="text-ink/70 leading-relaxed max-w-xl mx-auto">
-            There&apos;s no press coverage or media kit to show yet — and we&apos;d rather say that
+            There&apos;s no press coverage or media kit to show yet, and we&apos;d rather say that
             plainly than invent a clippings page. As real coverage happens, it&apos;ll live here.
           </p>
         </div>
@@ -52,10 +53,11 @@ export default function PressPage() {
           <div className="bg-white border border-ink/10 rounded-2xl p-7 text-sm leading-relaxed text-ink/85">
             <p>
               Kindred is a Florida-based marketplace that connects families directly with vetted,
-              independent Certified Nursing Assistants — without a staffing agency in between.
-              Caregivers set their own rates and keep what they charge; Kindred&apos;s service fee is
-              paid separately by families. Every caregiver completes a real interview and full
-              verification before appearing on the platform. Founded in 2025 and based in Gainesville,
+              independent Certified Nursing Assistants for in-home care, without a staffing agency in
+              between. Families hire and pay caregivers directly, and caregivers set their own rates
+              and keep what they charge. Kindred never handles care payments; it is funded by
+              memberships paid by families and caregivers. Every caregiver meets the Kindred
+              Standard, which includes a personal interview, before appearing on the platform. Founded in 2025 and based in Gainesville,
               Kindred is early-stage and Florida-first.
             </p>
           </div>
@@ -69,7 +71,7 @@ export default function PressPage() {
           <h3 className="font-display text-2xl font-medium mb-3">Talk to us</h3>
           <p className="text-sm text-ink/75 leading-relaxed mb-5">
             For interviews, fact-checking, or background on the independent-caregiver model, reach out
-            directly — a real person will respond.
+            directly. A real person will respond.
           </p>
           <a href={`mailto:${PRESS_EMAIL}?subject=Press inquiry`} className="text-deepteal hover:text-coral break-all">
             ✉ {PRESS_EMAIL}

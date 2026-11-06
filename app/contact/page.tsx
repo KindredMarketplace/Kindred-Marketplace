@@ -33,9 +33,9 @@ export default function ContactPage() {
         {/* Who you might be (honest routing, no fake numbers) */}
         <section className="grid md:grid-cols-3 gap-5 mb-12 fade-up">
           {[
-            ['👨‍👩‍👧', 'Families', 'Help finding a caregiver, payment questions, or care plan changes.'],
+            ['👨‍👩‍👧', 'Families', 'Help finding a caregiver, membership questions, or anything about how Kindred works.'],
             ['👩‍⚕️', 'Caregivers', 'Application help, profile questions, or anything about working on Kindred.'],
-            ['🏥', 'Facilities & press', 'Early-access interest for facilities, media inquiries, and partnerships.'],
+            ['📰', 'Press & partners', 'Media inquiries, investors, and insurance or community partners.'],
           ].map(([icon, title, body]) => (
             <div key={title} className="bg-white border border-ink/10 rounded-2xl p-6">
               <div className="text-2xl mb-2">{icon}</div>

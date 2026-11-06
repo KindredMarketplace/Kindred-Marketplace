@@ -1,0 +1,11 @@
+# Never upload local secrets or non-app folders to Vercel.
+.env
+.env.*
+!.env.example
+SECRETS.txt
+_archive
+scripts
+docs
+supabase
+*.md
+!README.md

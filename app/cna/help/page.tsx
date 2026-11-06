@@ -1,21 +1,24 @@
 /**
- * /cna/help — help center. Ported 1:1 from CNA-Portal/help.html.
+ * /cna/help — help center for caregivers.
  *
  * Entirely static content (FAQs + contact). Native <details> disclosure,
- * no client JS. Internal links point to the live /cna/* routes.
+ * no client JS. Copy follows the business model: families pay caregivers
+ * directly, Kindred earns only from memberships (prices live on /pricing),
+ * and the vetting bar is the Kindred Standard.
  *
  * Shell (nav/footer) comes from app/cna/layout.tsx.
  */
 
 import Link from 'next/link';
+import { CONTACT_EMAIL } from '@/lib/site';
 
 type Faq = { q: string; a: React.ReactNode };
 
 const TOPICS = [
-  { href: '#payouts', icon: '💰', title: 'Earnings & payouts', sub: 'Fees, tiers, instant cash-out' },
-  { href: '#shifts', icon: '📅', title: 'Shifts & schedule', sub: 'Cancellations, no-shows, clock-in' },
-  { href: '#tier', icon: '⭐', title: 'Tier & ratings', sub: 'How tiers work, getting reviewed' },
-  { href: '#safety', icon: '🛡️', title: 'Safety & disputes', sub: 'Incidents, blocking, getting help' },
+  { href: '#getting-paid', icon: '💵', title: 'Getting paid & membership', sub: 'Direct pay, your rate, membership' },
+  { href: '#standard', icon: '⭐', title: 'The Kindred Standard', sub: 'Vetting, insurance, your progress' },
+  { href: '#taxes', icon: '🧾', title: 'Taxes', sub: 'Self-employment and household employers' },
+  { href: '#safety', icon: '🛡️', title: 'Safety & reviews', sub: 'Feeling unsafe, ending work, reviews' },
 ];
 
 function FaqList({ faqs }: { faqs: Faq[] }) {
@@ -36,32 +39,32 @@ function FaqList({ faqs }: { faqs: Faq[] }) {
   );
 }
 
-const EARNINGS_FAQS: Faq[] = [
-  { q: 'When do I get paid?', a: (<>Three options, your pick. <strong>Weekly auto-deposit</strong> is free — every Monday, your previous week&rsquo;s earnings hit your bank in 1–2 business days. <strong>Next-day payout</strong> is $0.50 per cash-out. <strong>Instant payout</strong> is 1.5% (min $0.50) — under 30 minutes to your debit card. Set your default on the <Link href="/cna/earnings" className="text-deepteal hover:text-coral">Earnings page</Link>.</>) },
-  { q: "What's the Kindred fee?", a: (<>Your service fee depends on your tier. <strong>New</strong> caregivers pay 15%. <strong>Verified</strong> pays 12%. <strong>Top-Rated</strong> pays 10%. The fee comes out of each shift before payout. Stripe processing fees are separate and Kindred doesn&rsquo;t take any cut of those.</>) },
-  { q: 'How does instant payout work?', a: (<>Tap &ldquo;Cash out instantly&rdquo; on the Earnings page. Funds go to your linked debit card in under 30 minutes (most under 5). The fee is 1.5% with a $0.50 minimum — so $312 instantly costs $4.69. Most of the time, weekly auto-deposit is the smarter move.</>) },
-  { q: 'How do I get my 1099 tax form?', a: (<>We issue 1099-NEC forms each January for the prior tax year if you earned $600+ through Kindred. Find them under <Link href="/cna/earnings" className="text-deepteal hover:text-coral">Earnings → Tax docs</Link>. Since you&rsquo;re a 1099 contractor, set aside roughly 25–30% of every payout for taxes, and check our <Link href="/cna/resources" className="text-deepteal hover:text-coral">tax tips guide</Link>.</>) },
-  { q: 'I think I was underpaid for a shift', a: (<>Open the shift in <Link href="/cna/schedule" className="text-deepteal hover:text-coral">My schedule</Link>, tap &ldquo;Report a pay issue,&rdquo; and tell us what happened. Most pay issues resolve within 48 hours. If we owe you money, it lands in your next payout.</>) },
+const PAY_FAQS: Faq[] = [
+  { q: 'How do families pay me?', a: (<>Directly. You and the family agree on your rate, your schedule, and how you&rsquo;ll be paid (check, bank transfer, a payment app, whatever works for you both). Kindred never processes, holds, or takes any part of care payments. What the family pays you is yours.</>) },
+  { q: 'Does Kindred take a cut of what I earn?', a: (<>No. There&rsquo;s no service fee, no percentage, and no fee tiers. Kindred makes money only from memberships. Current membership prices are on the <Link href="/pricing" className="text-deepteal hover:text-coral">pricing page</Link>.</>) },
+  { q: 'How does membership work?', a: (<>Membership is a one-time startup fee plus a monthly fee. The first 25 approved caregivers get their first year free. You can see your plan and status on your <Link href="/cna/membership" className="text-deepteal hover:text-coral">Membership page</Link>, and current prices are always on the <Link href="/pricing" className="text-deepteal hover:text-coral">pricing page</Link>.</>) },
+  { q: 'How do I set my rate?', a: (<>You set it. Put your hourly rate on <Link href="/cna/profile" className="text-deepteal hover:text-coral">your profile</Link>, then talk it through with each family: hours, duties, overtime, and holidays. Kindred doesn&rsquo;t set, cap, or negotiate rates. We recommend writing down what you agree on, even in a simple message, so everyone remembers it the same way.</>) },
+  { q: 'What if a family cancels last minute or pays late?', a: (<>Because families pay you directly, cancellation terms and payment timing are between you and the family. Agree on them before you start (for example, how much notice you need and when you get paid). If a family doesn&rsquo;t keep their word, tell us. We can&rsquo;t collect money for you, but we do review family accounts that don&rsquo;t treat caregivers fairly.</>) },
+  { q: 'Can families pay me with Medicare or Medicaid?', a: (<>Not through Kindred. Kindred is private pay only and doesn&rsquo;t bill Medicare, Medicaid, or any insurer. Some families have long-term-care insurance that may reimburse them for in-home care. If so, the family handles that claim with their insurer, and you may be asked for a simple record of your hours.</>) },
 ];
 
-const SHIFT_FAQS: Faq[] = [
-  { q: 'How do I clock in?', a: (<>When you arrive at the client&rsquo;s home, open your dashboard and tap the green &ldquo;Clock in&rdquo; button on today&rsquo;s shift card. We log a timestamp and confirm your location. When the shift ends, tap &ldquo;Clock out.&rdquo; Your earnings are calculated from the clocked-in time.</>) },
-  { q: 'I need to cancel a shift', a: (<>Cancel from the shift detail page as early as possible. <strong>24+ hours notice:</strong> no penalty. <strong>2–24 hours:</strong> counts against your reliability score. <strong>Under 2 hours / no-show:</strong> serious — can lead to suspension. Genuine emergency? Message support and we&rsquo;ll waive the penalty.</>) },
-  { q: 'A client cancelled on me last-minute', a: (<>You&rsquo;re still owed something. Less than 24 hours notice: you get 50% of scheduled pay. After you&rsquo;ve arrived: 100%. These payouts are automatic — you don&rsquo;t need to fight for them.</>) },
-  { q: 'How do I block off vacation time?', a: (<>Go to <Link href="/cna/schedule" className="text-deepteal hover:text-coral">My schedule → Block off time</Link>. Block a single day or a range. We&rsquo;ll stop offering you jobs in that window and notify recurring clients you&rsquo;ll be away.</>) },
+const STANDARD_FAQS: Faq[] = [
+  { q: 'What is the Kindred Standard?', a: (<>It&rsquo;s the bar every caregiver on Kindred meets: a personal interview, 1,500+ hours of hands-on experience, a Level 2 background check, a verified ID, and your own liability insurance. Families see that every caregiver has cleared the same bar. Read the details on the <Link href="/kindred-standard" className="text-deepteal hover:text-coral">Kindred Standard page</Link>.</>) },
+  { q: 'Where can I see my progress?', a: (<>On your <Link href="/cna/membership" className="text-deepteal hover:text-coral">Membership page</Link>. It shows which parts of the Kindred Standard are done and what&rsquo;s still open.</>) },
+  { q: 'Why do I need my own liability insurance?', a: (<>You work for yourself, not for Kindred, so your own policy is what protects you on the job. It&rsquo;s part of the Kindred Standard. <Link href="/cna/get-insured" className="text-deepteal hover:text-coral">Get insured</Link> walks through what to look for.</>) },
+  { q: 'Can Kindred help me become a CNA?', a: (<>No. Kindred is for caregivers who already have the training and hands-on experience. We don&rsquo;t offer certification courses or a training pathway.</>) },
 ];
 
-const TIER_FAQS: Faq[] = [
-  { q: 'How do the tiers work?', a: (<><strong>New</strong> (15% fee) — everyone starts here. <strong>Verified</strong> (12% fee) — unlocked after your first 5 completed shifts with no flags, plus active license, L2 background check, CPR cert, and ID verification. <strong>Top-Rated</strong> (10% fee) — 10 five-star shifts plus 95%+ reliability over 90 days, and you show up first in client searches.</>) },
-  { q: 'What if my CPR cert expires?', a: (<>You drop to New tier the day it expires and stop appearing in client searches until you upload a renewed cert. We send reminders at 60, 30, and 7 days out. Find a class through <Link href="/cna/resources" className="text-deepteal hover:text-coral">Resources</Link>, then upload under <Link href="/cna/compliance" className="text-deepteal hover:text-coral">Compliance</Link> — you&rsquo;re back to your prior tier within minutes.</>) },
-  { q: 'I got a bad review I think is unfair', a: (<>You can flag a review for our team. We don&rsquo;t remove reviews just for being negative — but we will remove ones that are factually wrong, contain personal attacks, or come from someone who never booked you. Flagged reviews don&rsquo;t count toward your tier while under review.</>) },
+const TAX_FAQS: Faq[] = [
+  { q: 'Will Kindred send me a 1099?', a: (<>No. Kindred doesn&rsquo;t pay you, so it doesn&rsquo;t issue 1099s or any other tax form for your care work. Your income comes straight from the families you work with.</>) },
+  { q: 'How do taxes work when families pay me directly?', a: (<>In most cases you&rsquo;re self-employed: you report what you earn, pay self-employment tax, and may need to make quarterly estimated payments. In some arrangements, a family who controls when and how the work is done can count as a household employer under IRS rules. Then the family may owe employment taxes and give you a W-2. The IRS Household Employer&rsquo;s Tax Guide (Publication 926) explains the difference. A tax professional can tell you which applies to you.</>) },
+  { q: 'What records should I keep?', a: (<>Keep a simple log of the hours you work, each payment you receive, and your work-related expenses. It makes tax time easier, and it helps families who need records for long-term-care insurance.</>) },
 ];
 
 const SAFETY_FAQS: Faq[] = [
-  { q: "I don't feel safe at a shift. What do I do?", a: (<><strong>Leave first, document second.</strong> Your safety is the only thing that matters. Once safe, open the shift and tap &ldquo;Report an incident.&rdquo; You&rsquo;ll still be paid for time worked, and the client is paused from booking while we investigate. In immediate danger? Call 911 first.</>) },
-  { q: 'Can I block a client?', a: (<>Yes, anytime. Open any conversation or shift and tap &ldquo;Block this client.&rdquo; You won&rsquo;t see their job posts, they won&rsquo;t see your profile, and pending shifts get cancelled (you keep earned pay). It&rsquo;s silent.</>) },
-  { q: 'Does Kindred carry insurance for me?', a: (<>Kindred carries platform-level coverage — but since you&rsquo;re a 1099 contractor, our policy doesn&rsquo;t extend to your individual care work. We strongly recommend your own coverage; plans start at $8/mo. See <Link href="/cna/get-insured" className="text-deepteal hover:text-coral">Get insured</Link>.</>) },
-  { q: 'A client tried to pay me off-platform', a: (<>Decline politely. Off-platform payment leaves you with no insurance backup, no clock-in proof, no tax documentation, and no recourse. It also violates our terms. If a client pressures you, report it.</>) },
+  { q: "I don't feel safe in a client's home. What do I do?", a: (<><strong>Leave first, tell us second.</strong> Your safety comes first. If you&rsquo;re in immediate danger, call 911. Once you&rsquo;re safe, email us and we&rsquo;ll review the family&rsquo;s account.</>) },
+  { q: 'Can I stop working with a family?', a: (<>Yes. You&rsquo;re independent, so you choose who you work with. Give the notice you agreed on when you can. If the family behaved in a way that made you uncomfortable, let us know.</>) },
+  { q: 'I got a review I think is unfair', a: (<>Let us know. We don&rsquo;t remove reviews just for being negative, but we will remove ones that are factually wrong, contain personal attacks, or come from someone you never worked with.</>) },
 ];
 
 export default function CnaHelpPage() {
@@ -76,13 +79,13 @@ export default function CnaHelpPage() {
             What can we help you <span className="italic font-medium text-gradient">work through?</span>
           </h1>
           <p className="text-ink/70 mt-4 text-lg leading-relaxed max-w-2xl">
-            Most questions get answered below. If yours doesn&rsquo;t, we&rsquo;ll get you to a real
-            person fast.
+            Most questions get answered below. If yours doesn&rsquo;t, email us and a real person
+            will get back to you.
           </p>
           <div className="mt-6 bg-white border border-ink/15 rounded-2xl p-2 flex shadow-sm max-w-2xl">
             <input
               type="text"
-              placeholder="Try 'when do I get paid' or 'no-show policy'"
+              placeholder="Try 'how families pay me' or 'membership'"
               className="flex-1 px-4 py-3 text-sm bg-transparent focus:outline-none"
             />
             <button className="bg-deepteal text-cream px-6 py-3 rounded-xl text-sm font-medium hover:bg-inkdark transition">
@@ -107,24 +110,24 @@ export default function CnaHelpPage() {
           </div>
         </section>
 
-        <section id="payouts" className="mb-12 fade-up" style={{ animationDelay: '.1s' }}>
+        <section id="getting-paid" className="mb-12 fade-up" style={{ animationDelay: '.1s' }}>
           <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">Most asked</div>
-          <h2 className="font-display text-3xl font-medium mb-6">Earnings &amp; payouts</h2>
-          <FaqList faqs={EARNINGS_FAQS} />
+          <h2 className="font-display text-3xl font-medium mb-6">Getting paid &amp; membership</h2>
+          <FaqList faqs={PAY_FAQS} />
         </section>
 
-        <section id="shifts" className="mb-12 fade-up" style={{ animationDelay: '.15s' }}>
-          <h2 className="font-display text-3xl font-medium mb-6">Shifts &amp; schedule</h2>
-          <FaqList faqs={SHIFT_FAQS} />
+        <section id="standard" className="mb-12 fade-up" style={{ animationDelay: '.15s' }}>
+          <h2 className="font-display text-3xl font-medium mb-6">The Kindred Standard</h2>
+          <FaqList faqs={STANDARD_FAQS} />
         </section>
 
-        <section id="tier" className="mb-12 fade-up" style={{ animationDelay: '.2s' }}>
-          <h2 className="font-display text-3xl font-medium mb-6">Tier &amp; ratings</h2>
-          <FaqList faqs={TIER_FAQS} />
+        <section id="taxes" className="mb-12 fade-up" style={{ animationDelay: '.2s' }}>
+          <h2 className="font-display text-3xl font-medium mb-6">Taxes</h2>
+          <FaqList faqs={TAX_FAQS} />
         </section>
 
         <section id="safety" className="mb-12 fade-up" style={{ animationDelay: '.25s' }}>
-          <h2 className="font-display text-3xl font-medium mb-6">Safety &amp; disputes</h2>
+          <h2 className="font-display text-3xl font-medium mb-6">Safety &amp; reviews</h2>
           <FaqList faqs={SAFETY_FAQS} />
         </section>
 
@@ -135,32 +138,25 @@ export default function CnaHelpPage() {
               <div className="text-xs font-mono uppercase tracking-widest text-ink/60 mb-3">Still stuck?</div>
               <h2 className="font-display text-3xl font-medium mb-3">Talk to a real person.</h2>
               <p className="text-sm text-ink/75 leading-relaxed max-w-md">
-                Our support team is in Florida, knows the work, and replies within an hour on
-                weekdays. For shift-day emergencies, the in-app red button is the fastest route.
+                Email us with your question and a real person on the Kindred team will reply. If
+                you&rsquo;re ever in danger on the job, call 911 first.
               </p>
             </div>
             <div className="space-y-3">
-              <Link href="/cna/messages" className="card-hover bg-cream border border-ink/10 rounded-2xl p-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-deepteal/10 flex items-center justify-center text-2xl">💬</div>
+              <a href={`mailto:${CONTACT_EMAIL}`} className="card-hover bg-cream border border-ink/10 rounded-2xl p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-deepteal/10 flex items-center justify-center text-2xl">✉️</div>
                 <div className="flex-1">
-                  <div className="font-display text-lg font-medium">Message support</div>
-                  <div className="text-xs text-ink/60">Typically replies in under an hour, 8am–8pm ET</div>
+                  <div className="font-display text-lg font-medium">Email us</div>
+                  <div className="text-xs text-ink/60 font-mono break-all">{CONTACT_EMAIL}</div>
+                </div>
+              </a>
+              <Link href="/cna/membership" className="card-hover bg-cream border border-ink/10 rounded-2xl p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-deepteal/10 flex items-center justify-center text-2xl">⭐</div>
+                <div className="flex-1">
+                  <div className="font-display text-lg font-medium">Your membership</div>
+                  <div className="text-xs text-ink/60">Plan, status, and Kindred Standard progress</div>
                 </div>
               </Link>
-              <a href="tel:18555463733" className="card-hover bg-cream border border-ink/10 rounded-2xl p-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-deepteal/10 flex items-center justify-center text-2xl">📞</div>
-                <div className="flex-1">
-                  <div className="font-display text-lg font-medium">Call us</div>
-                  <div className="text-xs text-ink/60 font-mono">1-855-KINDRED · 8am–8pm ET, Mon–Sun</div>
-                </div>
-              </a>
-              <a href="#" className="card-hover bg-coral/10 border border-coral/30 rounded-2xl p-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-coral/20 flex items-center justify-center text-2xl">🚨</div>
-                <div className="flex-1">
-                  <div className="font-display text-lg font-medium text-coral">Shift emergency</div>
-                  <div className="text-xs text-ink/60">24/7 line for incidents while on a shift</div>
-                </div>
-              </a>
             </div>
           </div>
         </section>

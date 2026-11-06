@@ -25,6 +25,8 @@ const nextConfig = {
       { source: '/training-partners', destination: '/caregiver-resources', permanent: false },
       { source: '/insurance-billing', destination: '/pricing', permanent: false },
       { source: '/client/billing', destination: '/client/membership', permanent: false },
+      { source: '/cna/earnings', destination: '/cna/membership', permanent: false },
+      { source: '/cna/earnings/:path*', destination: '/cna/membership', permanent: false },
     ];
   },
   experimental: {

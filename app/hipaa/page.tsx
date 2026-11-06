@@ -7,6 +7,7 @@
 
 import Link from 'next/link';
 import { LegalShell } from '@/components/LegalShell';
+import { CONTACT_EMAIL } from '@/lib/site';
 
 export const metadata = {
   title: 'HIPAA Notice of Privacy Practices — Kindred',
@@ -73,7 +74,7 @@ export default function HipaaPage() {
             <p>You have the following rights regarding health information about a care recipient you manage on Kindred:</p>
 
             <Sub title="Right to access">
-              <p className="mt-1">You may request a copy of the health information we hold. Submit requests to <a href="mailto:hipaa@kindred.care" className="text-deepteal hover:text-coral underline">hipaa@kindred.care</a>. We will respond within 30 days.</p>
+              <p className="mt-1">You may request a copy of the health information we hold. Submit requests to <a href={`mailto:${CONTACT_EMAIL}`} className="text-deepteal hover:text-coral underline">{CONTACT_EMAIL}</a>. We will respond within 30 days.</p>
             </Sub>
             <Sub title="Right to correct">
               <p className="mt-1">If you believe health information we hold is incorrect or incomplete, you may request a correction. We will review and respond within 60 days.</p>
@@ -85,7 +86,7 @@ export default function HipaaPage() {
               <p className="mt-1">You may request a list of instances where we have shared PHI outside of normal care operations.</p>
             </Sub>
             <Sub title="Right to file a complaint">
-              <p className="mt-1">If you believe your HIPAA rights have been violated, you may file a complaint with us at <a href="mailto:hipaa@kindred.care" className="text-deepteal hover:text-coral underline">hipaa@kindred.care</a> or directly with the U.S. Department of Health and Human Services Office for Civil Rights at <a href="https://www.hhs.gov/hipaa/filing-a-complaint" className="text-deepteal hover:text-coral underline" target="_blank" rel="noopener noreferrer">hhs.gov/hipaa</a>. We will not retaliate against you for filing a complaint.</p>
+              <p className="mt-1">If you believe your HIPAA rights have been violated, you may file a complaint with us at <a href={`mailto:${CONTACT_EMAIL}`} className="text-deepteal hover:text-coral underline">{CONTACT_EMAIL}</a> or directly with the U.S. Department of Health and Human Services Office for Civil Rights at <a href="https://www.hhs.gov/hipaa/filing-a-complaint" className="text-deepteal hover:text-coral underline" target="_blank" rel="noopener noreferrer">hhs.gov/hipaa</a>. We will not retaliate against you for filing a complaint.</p>
             </Sub>
           </Sec>
 
@@ -104,15 +105,9 @@ export default function HipaaPage() {
             </p>
           </Sec>
 
-          <Sec title="6. For Business Customers (Facilities)">
+          <Sec title="6. Changes to This Notice">
             <p>
-              Kindred enters into a Business Associate Agreement (BAA) with facility customers that handle PHI through our platform. If you are a facility customer and need a copy of our standard BAA, contact <a href="mailto:business@kindred.care" className="text-deepteal hover:text-coral underline">business@kindred.care</a>.
-            </p>
-          </Sec>
-
-          <Sec title="7. Changes to This Notice">
-            <p>
-              We may update this notice from time to time. The current version will always be available at <Link href="/hipaa" className="text-deepteal hover:text-coral underline">kindred.care/hipaa</Link>.
+              We may update this notice from time to time. The current version will always be available at <Link href="/hipaa" className="text-deepteal hover:text-coral underline">kindredmarketplace.com/hipaa</Link>.
             </p>
           </Sec>
 
@@ -122,7 +117,7 @@ export default function HipaaPage() {
               <p className="font-medium">HIPAA Privacy Officer</p>
               <p className="text-ink/70">Kindred Marketplace LLC · Gainesville, Florida</p>
               <p className="text-ink/70 mt-1">
-                <a href="mailto:hipaa@kindred.care" className="text-deepteal hover:text-coral underline">hipaa@kindred.care</a>
+                <a href={`mailto:${CONTACT_EMAIL}`} className="text-deepteal hover:text-coral underline">{CONTACT_EMAIL}</a>
               </p>
             </div>
           </Sec>

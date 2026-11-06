@@ -2,9 +2,11 @@
  * /cna/dashboard — caregiver home. Ported 1:1 from CNA-Portal/dashboard.html.
  *
  * Data policy (per Nick, 2026-05-20): show REAL data where it exists; where a
- * feature has no database home yet (today's shift, job matches, earnings,
- * messages, tier progress %), render an explicit empty state rather than mock
- * numbers. Nothing fake-looking-real.
+ * feature has no database home yet (today's shift, job matches, messages),
+ * render an explicit empty state rather than mock numbers. Nothing
+ * fake-looking-real. There are no fee tiers: Kindred earns only from
+ * memberships, so the old tier card points to Kindred Standard progress on
+ * /cna/membership instead.
  *
  * The shell (nav/util-bar/footer) lives in app/cna/layout.tsx.
  */
@@ -16,12 +18,6 @@ import { formatCents } from '@/lib/utils/money';
 import { AvailabilityToggle } from '@/components/cna/AvailabilityToggle';
 
 export const dynamic = 'force-dynamic';
-
-const TIER_LABEL: Record<string, string> = {
-  new: 'New',
-  verified: 'Verified',
-  top_rated: 'Top-Rated',
-};
 
 export default async function CnaDashboardPage() {
   const supabase = await createClient();
@@ -47,7 +43,6 @@ export default async function CnaDashboardPage() {
   });
 
   const rateText = profile?.hourly_rate_cents ? formatCents(profile.hourly_rate_cents, { showFraction: false }) : null;
-  const tierLabel = profile?.tier ? TIER_LABEL[profile.tier] ?? profile.tier : null;
 
   // This CNA's recent job applications + the jobs they're against.
   const { data: myApps } = await supabase
@@ -122,7 +117,7 @@ export default async function CnaDashboardPage() {
               </div>
               <p className="text-sm text-ink/75 leading-relaxed mb-3">
                 You can still apply to jobs, but families browsing for caregivers won&rsquo;t see you
-                until you finish your profile — photo, bio, hourly rate, service area, and credentials.
+                until you finish your profile: photo, bio, hourly rate, service area, and credentials.
               </p>
               <Link
                 href="/cna/profile"
@@ -156,11 +151,11 @@ export default async function CnaDashboardPage() {
           <div className="font-display text-3xl font-medium mt-1 text-deepteal">{rateText ?? '—'}<span className="text-sm text-ink/50">/hr</span></div>
           <div className="text-xs text-ink/60 mt-1">{profile?.service_zip ? `Serves ${profile.service_zip}` : 'Set your area'}</div>
         </div>
-        <div className="bg-white border border-ink/10 rounded-2xl p-5">
-          <div className="text-xs uppercase tracking-widest text-ink/50 font-mono">Your tier</div>
-          <div className="font-display text-2xl font-medium mt-1">{tierLabel ?? '—'}</div>
-          <div className="text-xs text-ink/60 mt-1">{profile?.years_experience != null ? `${profile.years_experience} yrs experience` : ''}</div>
-        </div>
+        <Link href="/cna/membership" className="card-hover bg-white border border-ink/10 rounded-2xl p-5 block">
+          <div className="text-xs uppercase tracking-widest text-ink/50 font-mono">Kindred Standard</div>
+          <div className="font-display text-2xl font-medium mt-1">See progress</div>
+          <div className="text-xs text-ink/60 mt-1">{profile?.years_experience != null ? `${profile.years_experience} yrs experience` : 'On your Membership page'}</div>
+        </Link>
       </section>
 
       {/* TODAY'S SHIFT — no bookings system yet → empty state */}
@@ -170,8 +165,8 @@ export default async function CnaDashboardPage() {
           <div className="text-3xl mb-3">📅</div>
           <h2 className="font-display text-2xl font-medium mb-1">No shifts scheduled today</h2>
           <p className="text-sm text-ink/60 max-w-md mx-auto">
-            Once you accept a job and it's booked, your next shift will appear here with clock-in,
-            directions, and the care plan.
+            When you and a family agree on a schedule, you can keep track of it here and in My
+            schedule.
           </p>
           <Link
             href="/cna/jobs"
@@ -258,7 +253,7 @@ export default async function CnaDashboardPage() {
               <div className="text-3xl mb-3">🔍</div>
               <h3 className="font-display text-xl font-medium mb-1">No jobs to show yet</h3>
               <p className="text-sm text-ink/60 max-w-sm mx-auto mb-4">
-                When families and facilities post jobs in your service area, your best matches show up
+                When families post jobs in your service area, your best matches show up
                 right here.
               </p>
               <Link href="/cna/jobs" className="inline-block bg-deepteal text-cream px-5 py-2.5 rounded-full text-sm hover:bg-inkdark transition">
@@ -344,52 +339,41 @@ export default async function CnaDashboardPage() {
           <Link href="/cna/get-insured" className="card-hover bg-white border border-ink/10 rounded-2xl p-6 group">
             <div className="w-12 h-12 rounded-2xl bg-coral/15 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">🛡️</div>
             <div className="font-display text-lg font-medium mb-1">Get insured</div>
-            <div className="text-xs text-ink/60 leading-relaxed">Affordable liability coverage through our partner.</div>
+            <div className="text-xs text-ink/60 leading-relaxed">Your own liability insurance is part of the Kindred Standard.</div>
           </Link>
 
           <Link href="/cna/resources" className="card-hover bg-white border border-ink/10 rounded-2xl p-6 group">
             <div className="w-12 h-12 rounded-2xl bg-kindred-gradient-soft flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">🎓</div>
-            <div className="font-display text-lg font-medium mb-1">Grow your skills</div>
-            <div className="text-xs text-ink/60 leading-relaxed">RN bridge programs, dementia cert, hospice training near you.</div>
+            <div className="font-display text-lg font-medium mb-1">Caregiver resources</div>
+            <div className="text-xs text-ink/60 leading-relaxed">Guides on setting your rate, taxes, and working on your own.</div>
           </Link>
         </div>
       </section>
 
-      {/* TIER PROGRESS — show current tier (real); progress bar omitted (no shift-rating data yet) */}
-      {profile?.tier && (
-        <section className="fade-up" style={{ animationDelay: '.3s' }}>
-          <div className="bg-creamdark/70 border border-ink/10 rounded-2xl p-6 lg:p-8">
-            <div className="grid md:grid-cols-12 gap-6 items-center">
-              <div className="md:col-span-7">
-                <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">Your tier</div>
-                <h3 className="font-display text-2xl font-medium mb-2">
-                  You're a {tierLabel} caregiver.
-                </h3>
-                <p className="text-sm text-ink/70 leading-relaxed max-w-xl">
-                  As you complete more five-star shifts on Kindred, you'll move up tiers — unlocking a
-                  lower service fee, higher placement in client searches, and premium-rate job invites.
-                </p>
-              </div>
-              <div className="md:col-span-5">
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className={`rounded-xl p-3 border ${profile.tier === 'new' ? 'bg-mist/60 border-teal/30' : 'bg-cream border-ink/10'}`}>
-                    <div className="text-[10px] text-ink/50 uppercase tracking-wider mb-1">New</div>
-                    <div className="text-xs font-mono">Starter</div>
-                  </div>
-                  <div className={`rounded-xl p-3 border ${profile.tier === 'verified' ? 'bg-mist/60 border-teal/30' : 'bg-cream border-ink/10'}`}>
-                    <div className="text-[10px] text-deepteal uppercase tracking-wider mb-1 font-medium">Verified</div>
-                    <div className="text-xs font-mono font-medium">Established</div>
-                  </div>
-                  <div className={`rounded-xl p-3 border ${profile.tier === 'top_rated' ? 'bg-mist/60 border-teal/30' : 'bg-cream border-ink/10 opacity-60'}`}>
-                    <div className="text-[10px] text-ink/50 uppercase tracking-wider mb-1">Top-Rated</div>
-                    <div className="text-xs font-mono">Premium</div>
-                  </div>
-                </div>
-              </div>
+      {/* KINDRED STANDARD — progress lives on /cna/membership (real data there) */}
+      <section className="fade-up" style={{ animationDelay: '.3s' }}>
+        <div className="bg-creamdark/70 border border-ink/10 rounded-2xl p-6 lg:p-8">
+          <div className="grid md:grid-cols-12 gap-6 items-center">
+            <div className="md:col-span-8">
+              <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">The Kindred Standard</div>
+              <h3 className="font-display text-2xl font-medium mb-2">One bar for every caregiver.</h3>
+              <p className="text-sm text-ink/70 leading-relaxed max-w-xl">
+                A personal interview, 1,500+ hours of hands-on experience, a Level 2 background check,
+                a verified ID, and your own liability insurance. Families pay you directly, and
+                Kindred never takes a cut. See where you stand on your Membership page.
+              </p>
+            </div>
+            <div className="md:col-span-4 flex md:justify-end">
+              <Link
+                href="/cna/membership"
+                className="inline-block bg-deepteal text-cream px-5 py-2.5 rounded-full text-sm hover:bg-inkdark transition"
+              >
+                See my progress →
+              </Link>
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
     </main>
   );
 }

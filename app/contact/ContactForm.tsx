@@ -11,10 +11,9 @@ import { submitContactAction } from './actions';
 const ROLES = [
   'Family looking for care',
   'Family with a current Kindred caregiver',
-  'CNA / caregiver',
-  'Facility / enterprise',
-  'Training school partner',
+  'Caregiver',
   'Press / media',
+  'Partner or investor',
   'Other',
 ];
 

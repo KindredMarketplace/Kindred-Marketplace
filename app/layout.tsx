@@ -35,6 +35,8 @@ export const metadata: Metadata = {
   description:
     'Families and independent home caregivers, connected directly. Every caregiver is background-checked, ID-verified, insured and experienced. Gainesville, Florida.',
   applicationName: 'Kindred',
+  // Pre-launch previews (NEXT_PUBLIC_NOINDEX=1) stay out of search engines.
+  robots: process.env.NEXT_PUBLIC_NOINDEX === '1' ? { index: false, follow: false } : undefined,
   appleWebApp: {
     capable: true,
     title: 'Kindred',

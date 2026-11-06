@@ -51,32 +51,33 @@ export function SiteHeader() {
           {/* Inline search (routes to Browse) */}
           <form
             action="/browse"
-            className="hidden lg:flex flex-1 max-w-2xl items-center bg-white border border-ink/15 rounded-full overflow-hidden focus-within:border-teal focus-within:shadow-md transition"
+            className="hidden xl:flex flex-1 min-w-0 max-w-2xl items-center bg-white border border-ink/15 rounded-full overflow-hidden focus-within:border-teal focus-within:shadow-md transition"
           >
             <input
               name="q"
               type="text"
               placeholder="Try 'overnight dementia care' or 'bilingual CNA'"
-              className="flex-1 px-5 py-3 text-sm bg-transparent focus:outline-none"
+              className="flex-1 min-w-0 px-5 py-3 text-sm bg-transparent focus:outline-none"
             />
             <div className="h-6 w-px bg-ink/15" />
             <input
               name="zip"
               type="text"
               placeholder="📍 ZIP or city"
-              className="w-40 px-4 py-3 text-sm bg-transparent focus:outline-none"
+              className="w-32 shrink-0 px-4 py-3 text-sm bg-transparent focus:outline-none"
             />
-            <button className="bg-deepteal text-cream px-5 py-2.5 m-1 rounded-full text-sm font-medium hover:bg-inkdark transition">
+            <button className="shrink-0 bg-deepteal text-cream px-5 py-2.5 m-1 rounded-full text-sm font-medium hover:bg-inkdark transition">
               Search
             </button>
           </form>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden lg:flex shrink-0 items-center gap-1">
             <Link href="/browse" className="px-3 py-2 text-sm hover:text-coral transition">Browse</Link>
             <Link href="/apply" className="px-3 py-2 text-sm hover:text-coral transition">Apply now</Link>
             <Link href="/how-it-works" className="px-3 py-2 text-sm hover:text-coral transition">How it works</Link>
             <Link href="/kindred-standard" className="px-3 py-2 text-sm hover:text-coral transition">Our standard</Link>
+            <Link href="/pricing" className="px-3 py-2 text-sm hover:text-coral transition">Pricing</Link>
             <Link
               href="/signup"
               className="ml-2 bg-ink text-cream px-4 py-2 rounded-full text-sm hover:bg-coral transition inline-block"
@@ -86,7 +87,7 @@ export function SiteHeader() {
           </nav>
 
           {/* Mobile menu (no-JS, uses <details>) */}
-          <details className="md:hidden relative">
+          <details className="lg:hidden relative">
             <summary className="list-none cursor-pointer w-10 h-10 rounded-full border border-ink/15 flex items-center justify-center">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
@@ -97,6 +98,7 @@ export function SiteHeader() {
               <Link href="/apply" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist">Apply now</Link>
               <Link href="/how-it-works" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist">How it works</Link>
               <Link href="/kindred-standard" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist">Our standard</Link>
+              <Link href="/pricing" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist">Pricing</Link>
               <div className="h-px bg-ink/10 my-2" />
               <Link href="/login" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist">Log in</Link>
               <Link href="/signup" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist font-medium text-coral">Sign up</Link>

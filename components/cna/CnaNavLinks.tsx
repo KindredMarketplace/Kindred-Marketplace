@@ -3,7 +3,7 @@
 /**
  * CNA portal navigation links. Client component so it can highlight the
  * active route via usePathname(). Matches the mock's nav exactly:
- * Dashboard · Find jobs · My schedule · Earnings · Messages · [Get insured] · Resources
+ * Dashboard · Find jobs · My schedule · Messages · Membership · [Get insured] · Resources
  *
  * Phase C: renders a coral badge next to "Messages" when the caregiver has
  * unread messages. The count comes from the layout's server-side query at
@@ -18,7 +18,6 @@ const LINKS = [
   { href: '/cna/dashboard', label: 'Dashboard' },
   { href: '/cna/jobs', label: 'Find jobs' },
   { href: '/cna/schedule', label: 'My schedule' },
-  { href: '/cna/earnings', label: 'Earnings' },
   { href: '/cna/messages', label: 'Messages' },
   { href: '/cna/membership', label: 'Membership' },
 ];

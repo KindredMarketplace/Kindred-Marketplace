@@ -69,13 +69,12 @@ const LIVING = [
   { key: 'with_recipient', label: 'I live with them' },
 ];
 
+// Kindred is private pay only: families pay caregivers directly. Long-term-care
+// insurance is listed because some policies reimburse the family afterward.
+// (Older payer_type values still validate server-side; they're just not offered.)
 const PAYERS = [
-  { key: 'self_pay', label: 'Self-pay (out of pocket)' },
-  { key: 'ltc_insurance', label: 'Long-term care insurance' },
-  { key: 'medicaid', label: 'Florida Medicaid' },
-  { key: 'medicare_advantage', label: 'Medicare Advantage' },
-  { key: 'va', label: 'VA benefits' },
-  { key: 'workers_comp', label: "Workers' comp / auto" },
+  { key: 'self_pay', label: 'Private pay (out of pocket)' },
+  { key: 'ltc_insurance', label: 'Private pay, reimbursed by long-term-care insurance' },
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -281,7 +280,7 @@ export function ClientProfileEditor({
           {/* Bio / about them */}
           <div className="mt-4">
             <label className="block text-xs font-medium text-ink/70 mb-1.5">
-              A short intro <span className="text-ink/40">— tell caregivers who they are</span>
+              A short intro <span className="text-ink/40">(tell caregivers who they are)</span>
             </label>
             <textarea
               value={bio}
@@ -332,7 +331,7 @@ export function ClientProfileEditor({
         <div className={`${cardCls} lg:col-span-3`}>
           <div className="text-xs font-mono uppercase tracking-widest text-ink/45 mb-1">Care needs</div>
           <h3 className="font-display text-2xl font-medium mb-1">What kind of care is needed</h3>
-          <p className="text-sm text-ink/60 mb-5">Tap everything that applies — this drives who we match you with.</p>
+          <p className="text-sm text-ink/60 mb-5">Tap everything that applies. This drives who we match you with.</p>
 
           <div className="grid md:grid-cols-2 gap-x-8 gap-y-5">
             {Object.entries(grouped).map(([cat, items]) => (
@@ -379,7 +378,7 @@ export function ClientProfileEditor({
           <div className="text-xs font-mono uppercase tracking-widest text-coral mb-1">Beyond care</div>
           <h3 className="font-display text-2xl font-medium mb-1">Getting to know them</h3>
           <p className="text-sm text-ink/60 mb-6">
-            The little things make care personal. Start typing — we&rsquo;ll suggest as you go, and you can
+            The little things make care personal. Start typing and we&rsquo;ll suggest as you go, and you can
             always add your own.
           </p>
 
@@ -454,7 +453,11 @@ export function ClientProfileEditor({
         <div className={cardCls}>
           <div className="text-xs font-mono uppercase tracking-widest text-ink/45 mb-1">Payment</div>
           <h3 className="font-display text-2xl font-medium mb-1">How is care paid for?</h3>
-          <p className="text-xs text-ink/55 mb-4">This also shows up in billing.</p>
+          <p className="text-xs text-ink/55 mb-4">
+            Kindred is private pay only: you pay your caregiver directly. Kindred doesn&rsquo;t bill
+            Medicare, Medicaid, or any insurer. Some long-term-care policies may reimburse you, and you
+            file that claim with your insurer yourself.
+          </p>
           <div className="flex flex-col gap-2 mb-4">
             {PAYERS.map((p) => (
               <button
@@ -471,7 +474,7 @@ export function ClientProfileEditor({
           </div>
           {payerType && payerType !== 'self_pay' && (
             <div>
-              <label className="block text-xs font-medium text-ink/70 mb-1.5">Insurance / carrier details</label>
+              <label className="block text-xs font-medium text-ink/70 mb-1.5">Policy details (for your own records)</label>
               <input
                 value={insuranceDetail}
                 onChange={(e) => setInsuranceDetail(e.target.value)}
