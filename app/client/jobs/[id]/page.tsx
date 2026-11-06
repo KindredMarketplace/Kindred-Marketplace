@@ -85,16 +85,14 @@ export default async function ClientJobDetailPage({ params }: { params: Promise<
     { name: string; bio: string | null; rating: number | null; ratingCount: number; rate: number | null; years: number | null; tier: string }
   >();
   if (cnaIds.length > 0) {
-    const { data: cnas } = await supabase
-      .from('cna_profiles')
-      .select('user_id, display_name, last_name, bio, rating_avg, rating_count, hourly_rate_cents, years_experience, tier')
-      .in('user_id', cnaIds);
+    // caregiver_cards(): safe columns only, for caregivers this family is connected to.
+    const { data: cnas } = await supabase.rpc('caregiver_cards', { ids: cnaIds });
     (cnas ?? []).forEach((c) =>
       cnaMap.set(c.user_id, {
         name: `${c.display_name}${c.last_name ? ' ' + c.last_name[0] + '.' : ''}`,
         bio: c.bio,
         rating: c.rating_avg,
-        ratingCount: c.rating_count,
+        ratingCount: c.rating_count ?? 0,
         rate: c.hourly_rate_cents,
         years: c.years_experience,
         tier: c.tier,

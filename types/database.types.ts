@@ -2779,6 +2779,27 @@ export type Database = {
           years_experience: number | null
         }[]
       }
+      caregiver_cards: {
+        Args: { ids: string[] }
+        Returns: {
+          availability_status: Database["public"]["Enums"]["cna_availability_status"]
+          bio: string | null
+          completed_shifts_count: number | null
+          display_name: string | null
+          experience_hours: number | null
+          headline: string | null
+          hourly_rate_cents: number | null
+          languages: string[] | null
+          last_name: string | null
+          photo_url: string | null
+          rating_avg: number | null
+          rating_count: number | null
+          service_zip: string | null
+          tier: Database["public"]["Enums"]["cna_tier"]
+          user_id: string
+          years_experience: number | null
+        }[]
+      }
       browse_open_jobs: {
         Args: never
         Returns: {

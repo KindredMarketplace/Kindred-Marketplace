@@ -196,10 +196,7 @@ export async function loadInbox(
 
   if (forRole === 'client') {
     // Other side should be a CNA.
-    const { data: cnas } = await supabase
-      .from('cna_profiles')
-      .select('user_id, display_name, last_name, years_experience, tier')
-      .in('user_id', uniqueOthers);
+    const { data: cnas } = await supabase.rpc('caregiver_cards', { ids: uniqueOthers });
     (cnas ?? []).forEach((c) => {
       const subtitle = c.years_experience
         ? `CNA · ${c.years_experience} yrs exp`

@@ -54,3 +54,7 @@ supabase/.env
 .idea/
 *.swp
 *.swo
+
+# db test scratch
+scripts/db-tests/node_modules
+scripts/db-tests/migration.sql

@@ -7,9 +7,9 @@
  *
  * Events handled:
  *   checkout.session.completed      → membership active (+ startup fee paid)
- *   customer.subscription.updated   → mirror status + period end
- *   customer.subscription.deleted   → canceled
- *   invoice.payment_failed          → past_due
+ *   customer.subscription.updated   ┐ re-read the live subscription from
+ *   customer.subscription.deleted   ├ Stripe and mirror its current status,
+ *   invoice.payment_failed          ┘ so late / out-of-order events can't regress it
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -88,26 +88,50 @@ export async function POST(req: NextRequest) {
       }
 
       case 'customer.subscription.updated':
-      case 'customer.subscription.deleted': {
-        const sub = event.data.object as Stripe.Subscription;
-        const status = event.type === 'customer.subscription.deleted' ? 'canceled' : fromStripeStatus(sub.status);
-        const { error } = await supabase
-          .from('memberships')
-          .update({ status, current_period_end: periodEndIso(sub) })
-          .eq('stripe_subscription_id', sub.id);
-        if (error) throw error;
-        break;
-      }
-
+      case 'customer.subscription.deleted':
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice & { subscription?: string | { id: string } | null };
-        const subId = idOf(invoice.subscription ?? null);
+        // Events can arrive late or out of order, so never trust the payload's
+        // status: re-read the subscription from Stripe and mirror what's true now.
+        const subId =
+          event.type === 'invoice.payment_failed'
+            ? idOf((event.data.object as Stripe.Invoice & { subscription?: string | { id: string } | null }).subscription ?? null)
+            : (event.data.object as Stripe.Subscription).id;
         if (!subId) break;
-        const { error } = await supabase
+
+        const live = await stripe.subscriptions.retrieve(subId);
+        const status = fromStripeStatus(live.status);
+        const periodEnd = periodEndIso(live);
+
+        const { data: updated, error } = await supabase
           .from('memberships')
-          .update({ status: 'past_due' })
-          .eq('stripe_subscription_id', subId);
+          .update({ status, current_period_end: periodEnd })
+          .eq('stripe_subscription_id', subId)
+          .select('user_id');
         if (error) throw error;
+
+        if (!updated || updated.length === 0) {
+          // Arrived before checkout.session.completed was processed. Fall back
+          // to the user id we stamped on the subscription's metadata.
+          const userId = live.metadata?.user_id;
+          const role = live.metadata?.role;
+          if (userId && (role === 'client' || role === 'cna') && status !== 'canceled') {
+            const { error: upErr } = await supabase.from('memberships').upsert(
+              {
+                user_id: userId,
+                role,
+                status,
+                plan_key: live.metadata?.plan_key ?? null,
+                stripe_customer_id: idOf(live.customer as string | Stripe.Customer),
+                stripe_subscription_id: subId,
+                current_period_end: periodEnd,
+              },
+              { onConflict: 'user_id' }
+            );
+            if (upErr) throw upErr;
+          } else {
+            console.warn('[stripe] no membership matched subscription', subId, event.type);
+          }
+        }
         break;
       }
 

@@ -151,12 +151,17 @@ export async function MembershipPage({ role, status }: { role: 'client' | 'cna';
                 {access?.founding_slots_left != null &&
                   ` ${access.founding_slots_left} founding ${access.founding_slots_left === 1 ? 'spot' : 'spots'} left.`}
               </p>
+            ) : access?.membership_status === 'past_due' && stripeReady ? (
+              <form action="/api/membership/portal" method="post">
+                <button className="w-full sm:w-auto bg-deepteal text-cream px-8 py-3.5 rounded-full text-sm font-medium hover:bg-inkdark transition">
+                  Update payment method
+                </button>
+                <p className="text-xs text-ink/50 mt-3">Your last payment didn&apos;t go through. Fixing your card restores access.</p>
+              </form>
             ) : stripeReady ? (
               <form action="/api/membership/checkout" method="post">
                 <button className="w-full sm:w-auto bg-deepteal text-cream px-8 py-3.5 rounded-full text-sm font-medium hover:bg-inkdark transition">
-                  {access?.membership_status === 'past_due' || access?.membership_status === 'canceled'
-                    ? 'Restart membership'
-                    : 'Become a member'}
+                  {access?.membership_status === 'canceled' ? 'Restart membership' : 'Become a member'}
                 </button>
                 <p className="text-xs text-ink/50 mt-3">Secure checkout by Stripe. Cancel anytime from this page.</p>
               </form>

@@ -72,12 +72,19 @@ export default async function ClientDashboardPage() {
       }
     | null = null;
   if (currentBooking) {
-    const { data } = await supabase
-      .from('cna_profiles')
-      .select('display_name, last_name, rating_avg, rating_count, tier, years_experience, completed_shifts_count')
-      .eq('user_id', currentBooking.cna_id)
-      .maybeSingle();
-    caregiver = data;
+    const { data: cards } = await supabase.rpc('caregiver_cards', { ids: [currentBooking.cna_id] });
+    const c = cards?.[0];
+    caregiver = c
+      ? {
+          display_name: c.display_name ?? 'Caregiver',
+          last_name: c.last_name,
+          rating_avg: c.rating_avg,
+          rating_count: c.rating_count ?? 0,
+          tier: c.tier,
+          years_experience: c.years_experience,
+          completed_shifts_count: c.completed_shifts_count ?? 0,
+        }
+      : null;
   }
 
   // Upcoming shifts (next 7) across this family's bookings.

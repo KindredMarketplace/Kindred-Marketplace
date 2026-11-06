@@ -50,11 +50,8 @@ export default async function ClientMessageThreadPage({
 
   // Resolve the other user's display info — they should be a CNA when we're
   // in the family portal.
-  const { data: otherCna } = await supabase
-    .from('cna_profiles')
-    .select('display_name, last_name, years_experience, tier, hourly_rate_cents')
-    .eq('user_id', otherUserId)
-    .maybeSingle();
+  const { data: otherCards } = await supabase.rpc('caregiver_cards', { ids: [otherUserId] });
+  const otherCna = otherCards?.[0] ?? null;
 
   const otherName = otherCna
     ? `${otherCna.display_name}${otherCna.last_name ? ' ' + otherCna.last_name[0] + '.' : ''}`

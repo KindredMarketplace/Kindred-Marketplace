@@ -11,7 +11,11 @@
 --   Helpers (kindred_internal): is_member, meets_kindred_standard, is_listed,
 --            is_connected, grant_founding_if_available
 --   Public RPCs: browse_caregivers(), browse_open_jobs(), my_access()
---   RLS: closes anonymous/full read of cna_profiles + cna_verifications;
+--   Guards: caregivers can't approve themselves, set their own hours, or
+--           verify their own documents (BEFORE triggers; admin/service only)
+--   RLS: cna_profiles + cna_verifications readable by self/admin ONLY; every
+--        cross-user read goes through security-definer functions that return
+--        a fixed set of safe columns;
 --        open jobs readable in full only by listed caregivers;
 --        job applications require a listed caregiver;
 --        families must be members to START a message thread.
@@ -146,18 +150,18 @@ returns boolean language sql stable security definer set search_path = '' as $$
   select kindred_internal.meets_kindred_standard(cna) and kindred_internal.is_member(cna);
 $$;
 
--- Two people are "connected" once there is a thread, an application or a booking between them.
+-- Two people are "connected" once there is a live thread or a job application between them.
 create or replace function kindred_internal.is_connected(a uuid, b uuid)
 returns boolean language sql stable security definer set search_path = '' as $$
   select a is not null and b is not null and (
     exists (select 1 from public.message_threads t
-             where (t.participant_a = a and t.participant_b = b)
-                or (t.participant_a = b and t.participant_b = a))
+             where ((t.participant_a = a and t.participant_b = b)
+                 or (t.participant_a = b and t.participant_b = a))
+               and t.status in ('pending_request', 'accepted'))
     or exists (select 1 from public.job_applications ja join public.jobs j on j.id = ja.job_id
                 where (ja.cna_id = a and j.client_id = b) or (ja.cna_id = b and j.client_id = a))
-    or exists (select 1 from public.bookings bk
-                where (bk.cna_id = a and bk.client_id = b) or (bk.cna_id = b and bk.client_id = a))
   );
+  -- Bookings are deliberately NOT a connection: either party can insert one.
 $$;
 
 revoke all on function kindred_internal.is_member(uuid) from public;
@@ -168,6 +172,86 @@ grant execute on function kindred_internal.is_member(uuid) to anon, authenticate
 grant execute on function kindred_internal.meets_kindred_standard(uuid) to anon, authenticated;
 grant execute on function kindred_internal.is_listed(uuid) to anon, authenticated;
 grant execute on function kindred_internal.is_connected(uuid, uuid) to authenticated;
+
+-- ---------------------------------------------------------------- write guards
+-- The existing self-write policies (cna_profiles_insert_self / _update_self,
+-- cna_verifications_write_self) let a caregiver write ANY column of their own
+-- rows. These BEFORE triggers pin the columns that only Kindred may set.
+-- "Privileged" = an admin, or a server-side role (service_role / postgres).
+-- SECURITY INVOKER on purpose: current_user must be the caller's role.
+create or replace function kindred_internal.is_privileged_writer()
+returns boolean language sql stable set search_path = '' as $$
+  select current_user not in ('anon', 'authenticated') or coalesce(kindred_internal.is_admin(), false);
+$$;
+grant execute on function kindred_internal.is_privileged_writer() to anon, authenticated;
+
+create or replace function kindred_internal.guard_cna_profile_write()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  if kindred_internal.is_privileged_writer() then
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' then
+    if new.application_status is null or new.application_status not in ('incomplete', 'submitted') then
+      new.application_status := 'incomplete';
+    end if;
+    new.experience_hours := null;
+    new.application_notes := null;
+    new.application_decline_reason := null;
+    new.interview_at := null;
+    new.tier := 'new';
+    new.rating_avg := 0;
+    new.rating_count := 0;
+    new.completed_shifts_count := 0;
+    new.bg_check_status := null;
+    new.bg_check_completed_at := null;
+    new.license_verified_at := null;
+    return new;
+  end if;
+
+  -- UPDATE: a caregiver may only move their own draft forward to 'submitted'.
+  if not (coalesce(old.application_status, 'incomplete') in ('incomplete', 'submitted')
+          and new.application_status in ('incomplete', 'submitted')) then
+    new.application_status := old.application_status;
+  end if;
+  new.experience_hours := old.experience_hours;
+  new.application_notes := old.application_notes;
+  new.application_decline_reason := old.application_decline_reason;
+  new.interview_at := old.interview_at;
+  new.tier := old.tier;
+  new.rating_avg := old.rating_avg;
+  new.rating_count := old.rating_count;
+  new.completed_shifts_count := old.completed_shifts_count;
+  new.bg_check_status := old.bg_check_status;
+  new.bg_check_completed_at := old.bg_check_completed_at;
+  new.license_verified_at := old.license_verified_at;
+  return new;
+end;
+$$;
+
+drop trigger if exists cna_profiles_guard_write on public.cna_profiles;
+create trigger cna_profiles_guard_write
+  before insert or update on public.cna_profiles
+  for each row execute function kindred_internal.guard_cna_profile_write();
+
+-- Caregivers can upload / resubmit documents, but only Kindred marks them verified.
+create or replace function kindred_internal.guard_cna_verification_write()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  if kindred_internal.is_privileged_writer() then
+    return new;
+  end if;
+  new.status := 'pending';
+  new.verified_at := null;
+  return new;
+end;
+$$;
+
+drop trigger if exists cna_verifications_guard_write on public.cna_verifications;
+create trigger cna_verifications_guard_write
+  before insert or update on public.cna_verifications
+  for each row execute function kindred_internal.guard_cna_verification_write();
 
 -- ---------------------------------------------------------------- founding caregivers
 -- First N approved caregivers get a free year, startup fee waived.
@@ -239,23 +323,16 @@ end $$;
 -- answers, notes, license numbers and resumes to anonymous visitors.
 drop policy if exists cna_profiles_select_public on public.cna_profiles;
 drop policy if exists cna_profiles_select_scoped on public.cna_profiles;
+-- Self only (admins keep their existing "Admins can read all cna_profiles").
+-- Everyone else reads caregivers through browse_caregivers() or
+-- caregiver_cards(), which return a fixed set of safe columns.
 create policy cna_profiles_select_scoped on public.cna_profiles
-  for select to authenticated using (
-    user_id = auth.uid()
-    or kindred_internal.is_connected(auth.uid(), user_id)
-    or (kindred_internal.current_user_role() = 'client'
-        and kindred_internal.is_member(auth.uid())
-        and kindred_internal.is_listed(user_id))
-  );
+  for select to authenticated using (user_id = auth.uid());
 
 drop policy if exists cna_verifications_select_public on public.cna_verifications;
 drop policy if exists cna_verifications_select_scoped on public.cna_verifications;
 create policy cna_verifications_select_scoped on public.cna_verifications
-  for select to authenticated using (
-    cna_id = auth.uid()
-    or kindred_internal.is_admin()
-    or kindred_internal.is_connected(auth.uid(), cna_id)
-  );
+  for select to authenticated using (cna_id = auth.uid() or kindred_internal.is_admin());
 
 -- jobs: only LISTED caregivers read open jobs directly (street address etc).
 -- Everyone else uses browse_open_jobs(), which withholds the address.
@@ -289,10 +366,31 @@ create policy message_threads_insert_party on public.message_threads
       kindred_internal.is_admin()
       or (kindred_internal.current_user_role() = 'client' and kindred_internal.is_member(auth.uid()))
       or kindred_internal.is_connected(participant_a, participant_b)
-      or (job_id is not null and exists (
-            select 1 from public.jobs j where j.id = job_id and j.client_id = auth.uid()))
     )
   );
+
+-- Free text (bio / headline) often contains the caregiver's own name. In the
+-- locked preview, replace whole-word, case-insensitive matches with an initial.
+create or replace function kindred_internal.mask_names(body text, first_name text, last_name text)
+returns text language plpgsql immutable set search_path = '' as $$
+declare
+  out_text text := body;
+  nm text;
+begin
+  if out_text is null then return null; end if;
+  foreach nm in array array[first_name, last_name] loop
+    if nm is not null and length(trim(nm)) >= 2 then
+      out_text := regexp_replace(
+        out_text,
+        '\m' || regexp_replace(trim(nm), '([\\.^$|?*+()\[\]{}-])', '\\\1', 'g') || '\M',
+        upper(left(trim(nm), 1)) || '.',
+        'gi');
+    end if;
+  end loop;
+  return out_text;
+end;
+$$;
+grant execute on function kindred_internal.mask_names(text, text, text) to anon, authenticated;
 
 -- ---------------------------------------------------------------- public RPCs
 -- The locked preview. Returns ONLY listed caregivers, with identity fields
@@ -327,13 +425,18 @@ language sql stable security definer set search_path = '' as $$
               and kindred_internal.is_member(auth.uid())) as member_family
   )
   select
-    p.user_id,
+    -- Locked viewers get a stable pseudonymous id, not the real user id
+    -- (real ids would let someone guess avatar URLs or target a person).
+    case when u.full_access then p.user_id
+         else md5('kindred-preview:' || p.user_id::text)::uuid end,
     case when u.full_access then p.display_name
          else nullif(left(coalesce(p.display_name, ''), 1), '') end,
     case when u.full_access then p.last_name end,
     case when u.full_access then p.photo_url end,
-    p.headline,
-    p.bio,
+    case when u.full_access then p.headline
+         else kindred_internal.mask_names(p.headline, p.display_name, p.last_name) end,
+    case when u.full_access then p.bio
+         else kindred_internal.mask_names(p.bio, p.display_name, p.last_name) end,
     p.hourly_rate_cents,
     p.years_experience,
     p.experience_hours,
@@ -402,6 +505,49 @@ language sql stable security definer set search_path = '' as $$
 $$;
 revoke all on function public.browse_open_jobs() from public;
 grant execute on function public.browse_open_jobs() to anon, authenticated;
+
+-- Safe caregiver details for people who are allowed to see them: the
+-- caregiver, admins, anyone connected to them (thread / application), and
+-- member families looking at a listed caregiver. Never returns application
+-- answers, notes, license numbers, resumes or Stripe ids.
+create or replace function public.caregiver_cards(ids uuid[])
+returns table (
+  user_id uuid,
+  display_name text,
+  last_name text,
+  photo_url text,
+  headline text,
+  bio text,
+  hourly_rate_cents integer,
+  years_experience integer,
+  experience_hours integer,
+  rating_avg numeric,
+  rating_count integer,
+  tier public.cna_tier,
+  completed_shifts_count integer,
+  languages text[],
+  service_zip text,
+  availability_status public.cna_availability_status
+)
+language sql stable security definer set search_path = '' as $$
+  select p.user_id, p.display_name, p.last_name, p.photo_url, p.headline, p.bio,
+         p.hourly_rate_cents, p.years_experience, p.experience_hours,
+         p.rating_avg, p.rating_count, p.tier, p.completed_shifts_count,
+         p.languages, p.service_zip, p.availability_status
+  from public.cna_profiles p
+  where p.user_id = any(ids)
+    and auth.uid() is not null
+    and (
+      p.user_id = auth.uid()
+      or coalesce(kindred_internal.is_admin(), false)
+      or kindred_internal.is_connected(auth.uid(), p.user_id)
+      or (kindred_internal.current_user_role() = 'client'
+          and kindred_internal.is_member(auth.uid())
+          and kindred_internal.is_listed(p.user_id))
+    );
+$$;
+revoke all on function public.caregiver_cards(uuid[]) from public;
+grant execute on function public.caregiver_cards(uuid[]) to authenticated;
 
 -- What the signed-in user can do right now. One round trip for the UI.
 create or replace function public.my_access()

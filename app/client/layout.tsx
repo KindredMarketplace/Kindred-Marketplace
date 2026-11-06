@@ -84,11 +84,8 @@ export default async function ClientLayout({ children }: { children: React.React
     if (liveShifts && liveShifts.length > 0) {
       const onShift = activeBookings.find((b) => b.id === liveShifts[0].booking_id);
       if (onShift) {
-        const { data: cna } = await supabase
-          .from('cna_profiles')
-          .select('display_name, last_name')
-          .eq('user_id', onShift.cna_id)
-          .maybeSingle();
+        const { data: cards } = await supabase.rpc('caregiver_cards', { ids: [onShift.cna_id] });
+        const cna = cards?.[0] ?? null;
         const recipientFirst = recipients[0]?.name?.split(' ')[0];
         const cnaName = cna
           ? `${cna.display_name}${cna.last_name ? ' ' + cna.last_name[0] + '.' : ''}`

@@ -11,4 +11,4 @@ sed -e 's/^notify pgrst.*//' ../../supabase/migrations/00024_platform_model_memb
 node run.mjs
 ```
 
-Last run 2026-11-05: 30/30 passed.
+Last run 2026-11-05: 48/48 passed (includes every exploit from the first security review).

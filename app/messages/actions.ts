@@ -81,12 +81,8 @@ export async function startMessageThreadAction(formData: FormData): Promise<Star
   // application) can always talk.
   const access = await getMyAccess(supabase);
   if (!access?.is_member) {
-    const { data: visible } = await supabase
-      .from('cna_profiles')
-      .select('user_id')
-      .eq('user_id', parsed.data.cna_id)
-      .maybeSingle();
-    if (!visible) {
+    const { data: visible } = await supabase.rpc('caregiver_cards', { ids: [parsed.data.cna_id] });
+    if (!visible || visible.length === 0) {
       return {
         ok: false,
         error: 'Messaging caregivers opens with a Kindred membership. See Membership in your menu.',
@@ -94,13 +90,9 @@ export async function startMessageThreadAction(formData: FormData): Promise<Star
     }
   }
 
-  // Confirm the recipient is actually a CNA.
-  const { data: cnaProfile } = await supabase
-    .from('cna_profiles')
-    .select('user_id')
-    .eq('user_id', parsed.data.cna_id)
-    .maybeSingle();
-  if (!cnaProfile) {
+  // Confirm the recipient is a caregiver this family is allowed to see.
+  const { data: cnaCards } = await supabase.rpc('caregiver_cards', { ids: [parsed.data.cna_id] });
+  if (!cnaCards || cnaCards.length === 0) {
     return { ok: false, error: 'That caregiver isn\u2019t available to message.' };
   }
 
