@@ -680,6 +680,8 @@ export type Database = {
           created_at: string
           display_name: string
           experience_hours: number | null
+          experience_hours_reported: number | null
+          credential: string | null
           gender: string | null
           headline: string | null
           hourly_rate_cents: number | null
@@ -722,6 +724,8 @@ export type Database = {
           created_at?: string
           display_name: string
           experience_hours?: number | null
+          experience_hours_reported?: number | null
+          credential?: string | null
           gender?: string | null
           headline?: string | null
           hourly_rate_cents?: number | null
@@ -764,6 +768,8 @@ export type Database = {
           created_at?: string
           display_name?: string
           experience_hours?: number | null
+          experience_hours_reported?: number | null
+          credential?: string | null
           gender?: string | null
           headline?: string | null
           hourly_rate_cents?: number | null

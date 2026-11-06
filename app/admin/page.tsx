@@ -147,7 +147,7 @@ export default async function AdminPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="inline-block w-2 h-2 rounded-full bg-teal" />
-              <span className="font-display text-lg text-stone-900">CNA applications</span>
+              <span className="font-display text-lg text-stone-900">Caregiver applications</span>
             </div>
             <p className="text-sm text-stone-600 mt-1">
               Review applicants, run interviews, and approve only the ones who earn it.
@@ -159,6 +159,23 @@ export default async function AdminPage() {
             </span>
             <span className="text-stone-400 group-hover:text-teal transition">&rarr;</span>
           </div>
+        </Link>
+
+        {/* Kindred Standard review queue */}
+        <Link
+          href="/admin/verifications"
+          className="group flex items-center justify-between gap-4 rounded-xl border border-stone-200 bg-white p-5 mb-10 hover:border-teal hover:shadow-sm transition"
+        >
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-sage" />
+              <span className="font-display text-lg text-stone-900">Document review</span>
+            </div>
+            <p className="text-sm text-stone-600 mt-1">
+              Background checks, IDs and insurance caregivers uploaded for the Kindred Standard.
+            </p>
+          </div>
+          <span className="text-stone-400 group-hover:text-teal transition">&rarr;</span>
         </Link>
 
         {/* Funnel leads callout */}

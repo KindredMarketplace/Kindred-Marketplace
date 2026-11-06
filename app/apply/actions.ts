@@ -33,7 +33,15 @@ const ApplicationSchema = z.object({
   email: z.string().trim().toLowerCase().email('Enter a valid email address.'),
   phone: z.string().trim().min(7, 'Enter a valid phone number.').max(30),
   zip: z.string().trim().regex(/^\d{5}$/, 'Enter a 5-digit ZIP code.'),
-  license_number: z.string().trim().min(3, 'Enter your FL CNA license number.').max(40),
+  credential: z.enum(['cna', 'hha', 'lpn', 'rn', 'other'], {
+    errorMap: () => ({ message: 'Choose the credential that fits you best.' }),
+  }),
+  license_number: z.string().trim().max(40).optional().or(z.literal('')),
+  experience_hours: z.coerce
+    .number({ invalid_type_error: 'Enter your hours as a number.' })
+    .int('Enter a whole number of hours.')
+    .min(1500, 'Kindred currently accepts caregivers with at least 1,500 hours of hands-on experience.')
+    .max(200000, 'That number looks too high. Please double-check it.'),
   resume_ext: z.string().trim().max(10),
   media_ext: z.string().trim().max(10),
   media_kind: z.enum(['video', 'audio']),
@@ -99,7 +107,9 @@ export async function createApplicationAction(
       last_name: data.last_name,
       pronouns: data.pronouns || null,
       service_zip: data.zip,
-      license_number: data.license_number,
+      license_number: data.license_number || null,
+      credential: data.credential,
+      experience_hours_reported: data.experience_hours,
       availability_status: 'inactive',
       application_status: 'incomplete',
     },
@@ -142,9 +152,25 @@ export async function finalizeApplicationAction(args: {
   mediaPath: string;
   mediaKind: 'video' | 'audio';
 }): Promise<FinalizeResult> {
-  if (!args.userId) return { ok: false, error: 'Missing application.' };
+  // This runs before the applicant has a session, so nothing here is trusted:
+  // the ids must be well-formed, the file paths must be this applicant's own
+  // two application files, and both files must actually exist.
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!args.userId || !uuid.test(args.userId)) return { ok: false, error: 'Missing application.' };
+  if (args.mediaKind !== 'video' && args.mediaKind !== 'audio') return { ok: false, error: 'Missing application.' };
+  const ownFile = (p: string, stem: string) =>
+    typeof p === 'string' && new RegExp(`^${args.userId}/${stem}\\.[a-z0-9]{1,8}$`, 'i').test(p);
+  if (!ownFile(args.resumePath, 'application-resume') || !ownFile(args.mediaPath, 'application-media')) {
+    return { ok: false, error: 'Missing application.' };
+  }
 
   const svc = createServiceClient();
+
+  const { data: files } = await svc.storage.from(BUCKET).list(args.userId);
+  const names = new Set((files ?? []).map((f) => `${args.userId}/${f.name}`));
+  if (!names.has(args.resumePath) || !names.has(args.mediaPath)) {
+    return { ok: false, error: 'Your files did not finish uploading. Please try again.' };
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (svc.from('cna_profiles') as any)

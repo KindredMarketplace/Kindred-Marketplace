@@ -62,13 +62,28 @@ export default async function ApplicantDetailPage({
     .single();
 
   const [{ data: verifs }, { data: membership }] = await Promise.all([
-    supabase.from('cna_verifications').select('type, status, expires_at').eq('cna_id', id),
+    supabase.from('cna_verifications').select('type, status, expires_at, document_id').eq('cna_id', id),
     supabase
       .from('memberships')
       .select('status, founding, current_period_end, comp_reason, stripe_subscription_id')
       .eq('user_id', id)
       .maybeSingle(),
   ]);
+
+  // Signed, 10-minute links to the caregiver's uploaded Kindred Standard proof.
+  // The bucket is private; only this admin-checked page mints links.
+  const docLinks: Record<string, string> = {};
+  const verifDocIds = (verifs ?? []).map((v) => v.document_id).filter((x): x is string => !!x);
+  if (verifDocIds.length > 0) {
+    const svc = createServiceClient();
+    const { data: vdocs } = await svc.from('documents').select('id, storage_path').in('id', verifDocIds);
+    for (const v of verifs ?? []) {
+      const d = (vdocs ?? []).find((x) => x.id === v.document_id);
+      if (!d?.storage_path) continue;
+      const { data: signed } = await svc.storage.from('kindred-documents').createSignedUrl(d.storage_path, 600);
+      if (signed?.signedUrl) docLinks[v.type] = signed.signedUrl;
+    }
+  }
 
   const { data: docs } = await supabase
     .from('documents')
@@ -243,6 +258,9 @@ export default async function ApplicantDetailPage({
               id={id}
               approved={stage === 'approved'}
               hours={p.experience_hours ?? null}
+              reportedHours={p.experience_hours_reported ?? null}
+              credential={p.credential ?? null}
+              docLinks={docLinks}
               verifs={verifs ?? []}
               membership={membership ?? null}
             />
@@ -444,12 +462,18 @@ function StandardPanel({
   id,
   approved,
   hours,
+  reportedHours,
+  credential,
+  docLinks,
   verifs,
   membership,
 }: {
   id: string;
   approved: boolean;
   hours: number | null;
+  reportedHours: number | null;
+  credential: string | null;
+  docLinks: Record<string, string>;
   verifs: { type: string; status: string; expires_at: string | null }[];
   membership: {
     status: string;
@@ -499,13 +523,19 @@ function StandardPanel({
       <form action={setExperienceHoursAction} className="flex gap-2 items-end">
         <input type="hidden" name="applicant_id" value={id} />
         <label className="flex-1 text-[11px] text-stone-500">
-          Hands-on hours
+          Confirmed hands-on hours
+          {reportedHours != null && (
+            <span className="ml-1 text-stone-400">
+              (they reported {reportedHours.toLocaleString('en-US')}
+              {credential ? `, ${credential.toUpperCase()}` : ''})
+            </span>
+          )}
           <input
             name="experience_hours"
             type="number"
             min={0}
             step={1}
-            defaultValue={hours ?? ''}
+            defaultValue={hours ?? reportedHours ?? ''}
             className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-1.5 text-sm"
           />
         </label>
@@ -522,6 +552,18 @@ function StandardPanel({
               <span className="font-medium text-stone-700">{d.label}</span>
               <span className="text-stone-400">{current ? `${current.status}${current.expires_at ? ` · exp ${current.expires_at}` : ''}` : 'nothing yet'}</span>
             </div>
+            {docLinks[d.type] ? (
+              <a
+                href={docLinks[d.type]}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-xs text-emerald-800 underline underline-offset-2"
+              >
+                Open their upload ↗
+              </a>
+            ) : (
+              <div className="text-[11px] text-stone-400">No upload from them yet</div>
+            )}
             <div className="flex gap-2">
               {d.needsExpiry && (
                 <input

@@ -83,7 +83,9 @@ export default function ApplyPage() {
       email: fd.get('email')?.toString() ?? '',
       phone: fd.get('phone')?.toString() ?? '',
       zip: fd.get('zip')?.toString() ?? '',
+      credential: fd.get('credential')?.toString() ?? '',
       license_number: fd.get('license_number')?.toString() ?? '',
+      experience_hours: fd.get('experience_hours')?.toString() ?? '',
       resume_ext: extOf(resume!),
       media_ext: extOf(media!),
       media_kind: mediaKind,
@@ -214,15 +216,51 @@ export default function ApplyPage() {
 
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label="ZIP code" name="zip" inputMode="numeric" placeholder="32601" error={errors.zip} required disabled={working} />
+          <div>
+            <label htmlFor="credential" className="block text-sm font-medium mb-1.5">
+              Your credential <span className="text-coral">*</span>
+            </label>
+            <select
+              id="credential"
+              name="credential"
+              required
+              disabled={working}
+              defaultValue=""
+              className={`w-full px-4 py-3 rounded-xl border bg-white text-sm focus:outline-none focus:border-teal ${errors.credential ? 'border-coral' : 'border-ink/15'}`}
+            >
+              <option value="" disabled>Choose one</option>
+              <option value="cna">CNA (Certified Nursing Assistant)</option>
+              <option value="hha">HHA (Home Health Aide)</option>
+              <option value="lpn">LPN</option>
+              <option value="rn">RN</option>
+              <option value="other">Other caregiving experience</option>
+            </select>
+            {errors.credential && <p className="text-xs text-coral mt-1">{errors.credential}</p>}
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
           <Field
-            label="FL CNA license #"
+            label="License or certificate # (if you have one)"
             name="license_number"
-            placeholder="CNA…"
+            placeholder="Optional"
             error={errors.license_number}
+            disabled={working}
+          />
+          <Field
+            label="Hours of hands-on care experience"
+            name="experience_hours"
+            inputMode="numeric"
+            placeholder="e.g. 3000"
+            error={errors.experience_hours}
             required
             disabled={working}
           />
         </div>
+        <p className="text-xs text-ink/55 -mt-2">
+          Kindred is for experienced caregivers: we ask for at least 1,500 hours of hands-on care. A
+          full-time year is about 2,000 hours. We&apos;ll confirm it with you during your interview.
+        </p>
 
         {/* Resume */}
         <div>
