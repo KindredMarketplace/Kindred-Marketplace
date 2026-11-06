@@ -159,7 +159,8 @@ returns boolean language sql stable security definer set search_path = '' as $$
                  or (t.participant_a = b and t.participant_b = a))
                and t.status in ('pending_request', 'accepted'))
     or exists (select 1 from public.job_applications ja join public.jobs j on j.id = ja.job_id
-                where (ja.cna_id = a and j.client_id = b) or (ja.cna_id = b and j.client_id = a))
+                where ((ja.cna_id = a and j.client_id = b) or (ja.cna_id = b and j.client_id = a))
+                  and ja.status not in ('withdrawn', 'rejected'))
   );
   -- Bookings are deliberately NOT a connection: either party can insert one.
 $$;
@@ -207,6 +208,8 @@ begin
     new.bg_check_status := null;
     new.bg_check_completed_at := null;
     new.license_verified_at := null;
+    new.stripe_account_id := null;
+    new.stripe_onboarding_complete := false;
     return new;
   end if;
 
@@ -226,6 +229,8 @@ begin
   new.bg_check_status := old.bg_check_status;
   new.bg_check_completed_at := old.bg_check_completed_at;
   new.license_verified_at := old.license_verified_at;
+  new.stripe_account_id := old.stripe_account_id;
+  new.stripe_onboarding_complete := old.stripe_onboarding_complete;
   return new;
 end;
 $$;
@@ -337,7 +342,51 @@ begin
   end loop;
 end $$;
 
+-- ---------------------------------------------------------------- preview pseudonyms
+-- A per-database random salt, unreadable by API users, so a locked-preview id
+-- can't be matched back to a real user id by recomputing the hash.
+create table if not exists kindred_internal.secrets (key text primary key, value text not null);
+insert into kindred_internal.secrets (key, value)
+  values ('preview_salt', md5(random()::text || clock_timestamp()::text || gen_random_uuid()::text))
+  on conflict (key) do nothing;
+revoke all on kindred_internal.secrets from public, anon, authenticated;
+
+create or replace function kindred_internal.preview_id(uid uuid)
+returns uuid language sql stable security definer set search_path = '' as $$
+  select md5((select value from kindred_internal.secrets where key = 'preview_salt') || ':' || uid::text)::uuid;
+$$;
+revoke all on function kindred_internal.preview_id(uuid) from public, anon, authenticated;
+
 -- ---------------------------------------------------------------- RLS tightening
+-- These caregiver side-tables were readable by anyone (`using (true)`), which
+-- exposed real caregiver ids and let the locked preview be de-anonymised.
+-- Their data reaches families through browse_caregivers() instead.
+drop policy if exists cna_services_select_public on public.cna_services;
+drop policy if exists cna_services_select_scoped on public.cna_services;
+create policy cna_services_select_scoped on public.cna_services
+  for select to authenticated using (cna_id = auth.uid() or kindred_internal.is_admin());
+drop policy if exists cna_availability_select_public on public.cna_availability;
+drop policy if exists cna_availability_select_scoped on public.cna_availability;
+create policy cna_availability_select_scoped on public.cna_availability
+  for select to authenticated using (cna_id = auth.uid() or kindred_internal.is_admin());
+drop policy if exists cna_availability_overrides_select_public on public.cna_availability_overrides;
+drop policy if exists cna_availability_overrides_select_scoped on public.cna_availability_overrides;
+create policy cna_availability_overrides_select_scoped on public.cna_availability_overrides
+  for select to authenticated using (cna_id = auth.uid() or kindred_internal.is_admin());
+drop policy if exists cna_service_areas_select_public on public.cna_service_areas;
+drop policy if exists cna_service_areas_select_scoped on public.cna_service_areas;
+create policy cna_service_areas_select_scoped on public.cna_service_areas
+  for select to authenticated using (cna_id = auth.uid() or kindred_internal.is_admin());
+-- Visible reviews were public with reviewer/reviewee ids. Reviews UI comes in
+-- Phase 5 through a function; until then, parties + admins only.
+drop policy if exists reviews_select_public_visible on public.reviews;
+
+-- Only families post jobs (a caregiver posting a "bait job" could harvest
+-- other caregivers' details from their applications).
+drop policy if exists jobs_insert_self on public.jobs;
+create policy jobs_insert_self on public.jobs
+  for insert with check (client_id = auth.uid() and kindred_internal.current_user_role() = 'client');
+
 -- cna_profiles: was `using (true)` for everyone, which exposed application
 -- answers, notes, license numbers and resumes to anonymous visitors.
 drop policy if exists cna_profiles_select_public on public.cna_profiles;
@@ -394,16 +443,29 @@ create or replace function kindred_internal.mask_names(body text, first_name tex
 returns text language plpgsql immutable set search_path = '' as $$
 declare
   out_text text := body;
-  nm text;
+  tok text;
 begin
   if out_text is null then return null; end if;
-  foreach nm in array array[first_name, last_name] loop
-    if nm is not null and length(trim(nm)) >= 2 then
+  -- contact details never belong in a preview
+  out_text := regexp_replace(out_text, '[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}', '[email hidden]', 'g');
+  out_text := regexp_replace(out_text, '(\+?1[ .-]?)?\(?[0-9]{3}\)?[ .-]?[0-9]{3}[ .-]?[0-9]{4}', '[phone hidden]', 'g');
+  -- every word of the caregiver's names (handles "Mary Ann", "Lisa N.", hyphens)
+  foreach tok in array regexp_split_to_array(coalesce(first_name, '') || ' ' || coalesce(last_name, ''), '[^[:alpha:]'']+') loop
+    if length(tok) >= 2 then
       out_text := regexp_replace(
         out_text,
-        '\m' || regexp_replace(trim(nm), '([\\.^$|?*+()\[\]{}-])', '\\\1', 'g') || '\M',
-        upper(left(trim(nm), 1)) || '.',
+        '\m' || regexp_replace(tok, '([.^$|?*+()\[\]{}\\-])', '\\\1', 'g') || '\M',
+        upper(left(tok, 1)) || '.',
         'gi');
+      -- names glued to other words ("LisaNguyen"); only for longer names so
+      -- short ones ("Al") don't mangle ordinary words ("also")
+      if length(tok) >= 4 then
+      out_text := regexp_replace(
+        out_text,
+        regexp_replace(tok, '([.^$|?*+()\[\]{}\\-])', '\\\1', 'g'),
+        upper(left(tok, 1)) || '.',
+        'gi');
+      end if;
     end if;
   end loop;
   return out_text;
@@ -447,7 +509,7 @@ language sql stable security definer set search_path = '' as $$
     -- Locked viewers get a stable pseudonymous id, not the real user id
     -- (real ids would let someone guess avatar URLs or target a person).
     case when u.full_access then p.user_id
-         else md5('kindred-preview:' || p.user_id::text)::uuid end,
+         else kindred_internal.preview_id(p.user_id) end,
     case when u.full_access then p.display_name
          else nullif(left(coalesce(p.display_name, ''), 1), '') end,
     case when u.full_access then p.last_name end,

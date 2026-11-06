@@ -58,3 +58,4 @@ supabase/.env
 # db test scratch
 scripts/db-tests/node_modules
 scripts/db-tests/migration.sql
+scripts/db-tests/migration25.sql

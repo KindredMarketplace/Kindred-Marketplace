@@ -39,8 +39,6 @@ export async function POST(req: NextRequest) {
   const plan = await getPlanForRole(supabase, role);
   if (!plan) return back(req, home, { status: 'no_plan' });
 
-  // Reuse an existing Stripe customer if we have one (service role: the
-  // memberships table is not writable by users).
   const admin = createServiceClient();
   const { data: existing } = await admin
     .from('memberships')
@@ -48,28 +46,45 @@ export async function POST(req: NextRequest) {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  // Already have a subscription that isn't dead (e.g. past_due)? Send them to
-  // the Stripe portal to fix payment instead of starting a second subscription.
-  const { data: subRow } = await admin
-    .from('memberships')
-    .select('stripe_subscription_id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (subRow?.stripe_subscription_id && existing?.stripe_customer_id) {
-    try {
-      const stripe = getStripe();
-      const live = await stripe.subscriptions.retrieve(subRow.stripe_subscription_id);
-      if (!['canceled', 'incomplete_expired'].includes(live.status)) {
-        const portal = await stripe.billingPortal.sessions.create({
-          customer: existing.stripe_customer_id,
-          return_url: `${req.nextUrl.origin}${home}`,
-        });
-        return NextResponse.redirect(portal.url, { status: 303 });
-      }
-    } catch (err) {
-      console.error('[membership] could not check existing subscription', err instanceof Error ? err.message : err);
-      return back(req, home, { status: 'error' });
+  let customerId = existing?.stripe_customer_id ?? null;
+  try {
+    const stripe = getStripe();
+
+    // One Stripe customer per Kindred user, created before any checkout so
+    // every later check can look at the same customer. The idempotency key
+    // makes a double-click reuse the same customer instead of creating two.
+    if (!customerId) {
+      const customer = await stripe.customers.create(
+        { email: user.email ?? undefined, metadata: { user_id: user.id, role } },
+        { idempotencyKey: `kindred-customer-${user.id}` }
+      );
+      customerId = customer.id;
+      const { error } = existing
+        ? await admin.from('memberships').update({ stripe_customer_id: customerId }).eq('user_id', user.id)
+        : await admin
+            .from('memberships')
+            .insert({ user_id: user.id, role, status: 'none', stripe_customer_id: customerId });
+      if (error) throw error;
     }
+
+    // Never start a second subscription: anyone with a live one (active,
+    // past_due, still paying the first invoice...) goes to the portal instead.
+    const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 20 });
+    const live = subs.data.find((x) => !['canceled', 'incomplete_expired'].includes(x.status));
+    if (live) {
+      const portal = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${req.nextUrl.origin}${home}`,
+      });
+      return NextResponse.redirect(portal.url, { status: 303 });
+    }
+
+    // Close any other open checkout tabs so only this one can complete.
+    const open = await stripe.checkout.sessions.list({ customer: customerId, status: 'open', limit: 20 });
+    await Promise.all(open.data.map((cs) => stripe.checkout.sessions.expire(cs.id).catch(() => null)));
+  } catch (err) {
+    console.error('[membership] could not prepare checkout', err instanceof Error ? err.message : err);
+    return back(req, home, { status: 'error' });
   }
 
   const chargeStartup =
@@ -80,8 +95,7 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       client_reference_id: user.id,
-      customer: existing?.stripe_customer_id ?? undefined,
-      customer_email: existing?.stripe_customer_id ? undefined : user.email ?? undefined,
+      customer: customerId ?? undefined,
       line_items: [
         {
           quantity: 1,

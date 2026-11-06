@@ -3,6 +3,7 @@ import fs from 'node:fs';
 const db = new PGlite();
 await db.exec(fs.readFileSync('fixture.sql','utf8'));
 await db.exec(fs.readFileSync('migration.sql','utf8'));
+await db.exec(fs.readFileSync('migration25.sql','utf8'));
 // post-migration test setup (as superuser)
 await db.exec(`
   update public.cna_profiles set experience_hours = 2000 where user_id in ('00000000-0000-0000-0000-0000000000e1','00000000-0000-0000-0000-0000000000e2');
@@ -13,6 +14,8 @@ await db.exec(`
   insert into public.memberships (user_id, role, status, plan_key, current_period_end) values
    ('00000000-0000-0000-0000-0000000000c1','client','active','family_standard', now() + interval '20 days');
   grant all on all tables in schema public to anon, authenticated;
+  insert into public.cna_services values ('00000000-0000-0000-0000-0000000000e1','dementia');
+  insert into public.reviews (reviewer_id, reviewee_id, rating) values ('00000000-0000-0000-0000-0000000000c1','00000000-0000-0000-0000-0000000000e1',5);
 `);
 const results = [];
 async function as(uid, sql) {
@@ -191,6 +194,72 @@ const repoint = (await db.query(`select cna_id from public.job_applications wher
 check('EXPLOIT 11: family cannot re-point an application at another caregiver', repoint.every(r => r.cna_id !== T), repoint);
 const ffTia = await as(FF, `select * from public.caregiver_cards(array['${T}']::uuid[])`);
 check('EXPLOIT 11b: no identity unlock from re-pointing', Array.isArray(ffTia) && ffTia.length === 0, ffTia);
+
+// ---------------- round-2 review findings ----------------
+// C1: self-promotion to admin
+await db.exec(`insert into public.users (id, role, full_name) values ('00000000-0000-0000-0000-0000000000c7','client','Climber')`);
+const C7='00000000-0000-0000-0000-0000000000c7';
+await as(C7, `update public.users set role = 'admin', status = 'active' where id = '${C7}'`);
+const c7 = (await db.query(`select role from public.users where id='${C7}'`)).rows;
+check('C1: users cannot make themselves admin', c7[0]?.role === 'client', c7);
+await as(C7, `update public.users set full_name = 'Renamed' where id = '${C7}'`);
+const c7n = (await db.query(`select full_name from public.users where id='${C7}'`)).rows;
+check('users can still edit their own name', c7n[0]?.full_name === 'Renamed', c7n);
+// C1b: signup as admin via metadata
+await db.exec(`insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-0000000000c8','x@y.z','{"role":"admin","username":"evil"}'),
+  ('00000000-0000-0000-0000-0000000000e8','c@y.z','{"role":"cna","username":"care"}')`);
+const su = (await db.query(`select id, role from public.users where id in ('00000000-0000-0000-0000-0000000000c8','00000000-0000-0000-0000-0000000000e8') order by id`)).rows;
+check('C1b: signup cannot request admin; caregiver signup still works', su.find(r => r.id.endsWith('c8'))?.role === 'client' && su.find(r => r.id.endsWith('e8'))?.role === 'cna', su);
+// H1: side tables no longer leak caregiver ids; pseudonym not recomputable
+const anonSvc = await as(null, 'select * from public.cna_services');
+check('H1a: anon cannot read cna_services', Array.isArray(anonSvc) && anonSvc.length === 0, anonSvc);
+const anonRev = await as(null, 'select * from public.reviews');
+check('H1b: anon cannot read reviews', Array.isArray(anonRev) && anonRev.length === 0, anonRev);
+const pv = await as(null, 'select user_id from public.browse_caregivers()');
+const naive = (await db.query(`select md5('kindred-preview:' || '${L}')::uuid as id`)).rows[0].id;
+check('H1c: preview id is salted (not recomputable)', pv[0] && pv[0].user_id !== naive && pv[0].user_id !== L, { pv, naive });
+const salt = await as(FF, 'select * from kindred_internal.secrets');
+check('H1d: salt unreadable by users', salt.error, salt);
+// H2: masking
+await db.exec(`update public.cna_profiles set display_name = 'Mary Ann', last_name = 'Nguyen-Smith', bio = 'Call Mary at (352) 555-0199 or mary.n@gmail.com. I am MaryAnn Smith, also NguyenSmith.' where user_id = '${L}'`);
+const mk = await as(null, 'select bio from public.browse_caregivers()');
+const mbio = mk[0]?.bio ?? '';
+check('H2: masks first-name tokens, phones, emails, glued names', !/mary|ann\b|nguyen|smith|555|gmail/i.test(mbio) && /also/.test(mbio), mbio);
+await db.exec(`update public.cna_profiles set display_name = 'Lisa', last_name = 'Nguyen' where user_id = '${L}'`);
+// M1: messages must go into a live thread you're part of
+const fmThread = (await db.query(`select id from public.message_threads where participant_a = '${FM}' and participant_b = '${L}' limit 1`)).rows[0]?.id;
+const okMsg = await as(FM, `insert into public.messages (thread_id, sender_id, recipient_id, body) values (${fmThread}, '${FM}', '${L}', 'hello') returning id`);
+check('M1a: participant can message in a live thread', Array.isArray(okMsg) && okMsg.length === 1, okMsg);
+const prev = (await db.query(`select last_message_preview, unread_count_b from public.message_threads where id = ${fmThread}`)).rows[0];
+check('M1b: thread summary trigger now saves (preview/unread)', prev?.last_message_preview === 'hello', prev);
+const intrude = await as(FF, `insert into public.messages (thread_id, sender_id, recipient_id, body) values (${fmThread}, '${FF}', '${L}', 'sneak') returning id`);
+check('M1c: cannot post into a thread you are not in', intrude.error, intrude);
+const blockedId = (await db.query(`select id from public.message_threads where status = 'blocked' limit 1`)).rows[0]?.id;
+const toBlocked = await as(C5, `insert into public.messages (thread_id, sender_id, recipient_id, body) values (${blockedId}, '${C5}', '${L}', 'still here') returning id`);
+check('M1d: cannot message into a blocked thread', toBlocked.error, toBlocked);
+await as(L, `update public.message_threads set status = 'pending_request' where id = ${blockedId}`);
+const stillBlocked = (await db.query(`select status from public.message_threads where id = ${blockedId}`)).rows[0];
+check('M1e: participants cannot un-block', stillBlocked?.status === 'blocked', stillBlocked);
+await as(L, `update public.message_threads set status = 'accepted', participant_b = '${T}' where id = ${fmThread}`);
+const acc2 = (await db.query(`select status, participant_b from public.message_threads where id = ${fmThread}`)).rows[0];
+check('M1f: recipient can accept but not re-point a thread', acc2?.status === 'accepted' && acc2?.participant_b === L, acc2);
+// L2: a cold thread can't start pre-accepted
+await db.exec(`insert into public.users (id, role, full_name) values ('00000000-0000-0000-0000-0000000000c9','client','New Member');
+  insert into public.memberships (user_id, role, status) values ('00000000-0000-0000-0000-0000000000c9','client','active');`);
+const C9='00000000-0000-0000-0000-0000000000c9';
+await as(C9, `insert into public.message_threads (participant_a, participant_b, status, started_by) values ('${C9}','${L}','accepted','${L}')`);
+const c9t = (await db.query(`select status, started_by from public.message_threads where participant_a = '${C9}'`)).rows[0];
+check('L2: cold thread lands as pending_request, started_by = inserter', c9t?.status === 'pending_request' && c9t?.started_by === C9, c9t);
+// M2: caregivers can't post jobs; withdrawn applications stop counting
+const cnaJob = await as(L, `insert into public.jobs (client_id, title) values ('${L}', 'bait') returning id`);
+check('M2a: caregivers cannot post jobs', cnaJob.error, cnaJob);
+await db.exec(`update public.job_applications set status = 'withdrawn' where cna_id = '${L}' and job_id = '11111111-1111-1111-1111-111111111111'`);
+const ffAfterWithdraw = await as(FF, `select * from public.caregiver_cards(array['${L}']::uuid[])`);
+check('M2b: withdrawn application no longer unlocks the caregiver', Array.isArray(ffAfterWithdraw) && ffAfterWithdraw.length === 0, ffAfterWithdraw);
+// L3: stripe fields
+await as(L, `update public.cna_profiles set stripe_account_id = 'acct_evil', stripe_onboarding_complete = true where user_id = '${L}'`);
+const st = (await db.query(`select stripe_account_id, stripe_onboarding_complete from public.cna_profiles where user_id='${L}'`)).rows[0];
+check('L3: caregivers cannot set Stripe fields', st?.stripe_account_id === null && st?.stripe_onboarding_complete === false, st);
 
 let fail = 0;
 for (const r of results) { console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}`); if (!r.ok) { fail++; console.log('      ', JSON.stringify(r.detail)); } }

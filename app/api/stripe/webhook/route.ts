@@ -63,6 +63,28 @@ export async function POST(req: NextRequest) {
           break;
         }
         const subId = idOf(session.subscription as string | Stripe.Subscription | null);
+
+        // Safety net for double checkout (two tabs, a stale session): if this
+        // person already has a different live subscription, cancel and refund
+        // the new one rather than billing them twice.
+        const { data: current } = await supabase
+          .from('memberships')
+          .select('stripe_subscription_id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (subId && current?.stripe_subscription_id && current.stripe_subscription_id !== subId) {
+          const prior = await stripe.subscriptions.retrieve(current.stripe_subscription_id);
+          if (!['canceled', 'incomplete_expired'].includes(prior.status)) {
+            const dup = await stripe.subscriptions.retrieve(subId, { expand: ['latest_invoice.payment_intent'] });
+            await stripe.subscriptions.cancel(subId);
+            const inv = dup.latest_invoice as (Stripe.Invoice & { payment_intent?: string | Stripe.PaymentIntent | null }) | null;
+            const pi = idOf((inv?.payment_intent as string | Stripe.PaymentIntent | null) ?? null);
+            if (pi) await stripe.refunds.create({ payment_intent: pi });
+            console.warn('[stripe] duplicate subscription canceled + refunded', subId, 'for user', userId);
+            break;
+          }
+        }
+
         let periodEnd: string | null = null;
         let status: 'active' | 'past_due' | 'canceled' | 'none' = 'active';
         if (subId) {
@@ -114,7 +136,11 @@ export async function POST(req: NextRequest) {
           // to the user id we stamped on the subscription's metadata.
           const userId = live.metadata?.user_id;
           const role = live.metadata?.role;
-          if (userId && (role === 'client' || role === 'cna') && status !== 'canceled') {
+          const { data: holder } = userId
+            ? await supabase.from('memberships').select('stripe_subscription_id').eq('user_id', userId).maybeSingle()
+            : { data: null };
+          const holdsOther = !!holder?.stripe_subscription_id && holder.stripe_subscription_id !== subId;
+          if (userId && (role === 'client' || role === 'cna') && status !== 'canceled' && !holdsOther) {
             const { error: upErr } = await supabase.from('memberships').upsert(
               {
                 user_id: userId,
