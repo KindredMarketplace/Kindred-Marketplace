@@ -14,7 +14,7 @@
  * Always `await createClient()` at the call site.
  */
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { createClient as createPlainClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database.types';
@@ -27,22 +27,17 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
+        setAll(cookiesToSet) {
           try {
-            cookieStore.set({ name, value, ...options });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
           } catch {
-            // Called from a Server Component — set() throws. Safe to ignore
-            // when paired with middleware that refreshes sessions.
-          }
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: '', ...options });
-          } catch {
-            // Same caveat as set() above.
+            // Called from a Server Component, where cookies are read-only.
+            // Safe to ignore: middleware refreshes the session.
           }
         },
       },

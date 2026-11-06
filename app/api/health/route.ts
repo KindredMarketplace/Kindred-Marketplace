@@ -13,7 +13,7 @@ export async function GET() {
   const startedAt = Date.now();
 
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Cheapest possible query — confirms the connection works.
     // We don't query an actual table because RLS would return zero rows

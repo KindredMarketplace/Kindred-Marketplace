@@ -19,14 +19,10 @@ import { formatCents } from '@/lib/utils/money';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { BrowseFilterChips } from '@/components/client/BrowseFilterChips';
 import { StartMessageModal } from '@/components/client/StartMessageModal';
+import { getMyAccess } from '@/lib/membership';
 
 export const dynamic = 'force-dynamic';
 
-const TIER_LABEL: Record<string, string> = {
-  new: 'New',
-  verified: 'Verified',
-  top_rated: 'Top Rated',
-};
 
 export default async function ClientBrowsePage() {
   const supabase = await createClient();
@@ -39,40 +35,16 @@ export default async function ClientBrowsePage() {
   const profileRes = await supabase.from('client_profiles').select('zip').eq('user_id', user.id).maybeSingle();
   const clientZip = profileRes.data?.zip ?? null;
 
-  // Real caregivers — approved, visible profiles, best-rated first.
-  // BOTH guards: availability must be active-ish, AND application_status must
-  // be 'approved'. This prevents incomplete/skeleton profiles (auto-created
-  // when a CNA applies to their first job before finishing onboarding) from
-  // appearing as ghost listings.
-  const { data: cnas } = await supabase
-    .from('cna_profiles')
-    .select(
-      'user_id, display_name, last_name, bio, hourly_rate_cents, years_experience, rating_avg, rating_count, tier, availability_status',
-    )
-    .in('availability_status', ['available', 'fully_booked'])
-    .eq('application_status', 'approved')
-    .order('rating_avg', { ascending: false })
-    .order('rating_count', { ascending: false })
-    .limit(25);
-
-  const caregivers = cnas ?? [];
-
-  // Service tags per caregiver (label via service_taxonomy).
-  const cgIds = caregivers.map((c) => c.user_id);
-  const servicesByCna = new Map<string, string[]>();
-  if (cgIds.length > 0) {
-    const { data: svc } = await supabase
-      .from('cna_services')
-      .select('cna_id, service_taxonomy(label)')
-      .in('cna_id', cgIds);
-    (svc ?? []).forEach((row: any) => {
-      const label = row.service_taxonomy?.label;
-      if (!label) return;
-      const arr = servicesByCna.get(row.cna_id) ?? [];
-      arr.push(label);
-      servicesByCna.set(row.cna_id, arr);
-    });
-  }
+  // Locked preview (Nov 2026): rows come from browse_caregivers(), which only
+  // returns LISTED caregivers (Kindred Standard + membership) and withholds
+  // names/photos unless this family is a member or already connected.
+  const [{ data: rows }, access] = await Promise.all([
+    supabase.rpc('browse_caregivers'),
+    getMyAccess(supabase),
+  ]);
+  const caregivers = rows ?? [];
+  const isMember = access?.is_member ?? false;
+  const servicesByCna = new Map<string, string[]>(caregivers.map((c) => [c.user_id, c.services ?? []]));
 
   // Who is this client currently working with (to badge "Currently hired").
   const { data: bookings } = await supabase
@@ -92,7 +64,7 @@ export default async function ClientBrowsePage() {
         </h1>
         <p className="text-ink/70 mt-2 max-w-2xl">
           {caregivers.length > 0
-            ? `Vetted Certified Nursing Assistants${clientZip ? ` near ${clientZip}` : ''}. Use filters to narrow down to who'll feel right.`
+            ? `Caregivers who meet the Kindred Standard${clientZip ? `, near ${clientZip}` : ''}. Talk to a few before you choose.`
             : 'As caregivers join Kindred in your area, they\u2019ll appear here.'}
         </p>
 
@@ -116,6 +88,21 @@ export default async function ClientBrowsePage() {
         </div>
 
         <BrowseFilterChips />
+
+        {!isMember && (
+          <div className="mt-6 bg-gradient-to-br from-mist/70 to-creamdark/70 border border-ink/10 rounded-2xl p-5 flex flex-col md:flex-row md:items-center gap-4 justify-between">
+            <div>
+              <div className="font-display text-lg font-medium">You&apos;re browsing the preview.</div>
+              <p className="text-sm text-ink/70 mt-1 max-w-xl">
+                Everything below is real. Names, photos and messaging open up with a Kindred membership,
+                which protects caregivers&apos; privacy until someone is serious about hiring.
+              </p>
+            </div>
+            <Link href="/client/membership" className="shrink-0 bg-deepteal text-cream px-5 py-2.5 rounded-full text-sm font-medium hover:bg-inkdark transition text-center">
+              Unlock with membership →
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* MAIN CONTENT */}
@@ -183,8 +170,8 @@ export default async function ClientBrowsePage() {
               <div className="text-3xl mb-3">🔍</div>
               <h3 className="font-display text-xl font-medium mb-1">No caregivers to show yet</h3>
               <p className="text-sm text-ink/60 max-w-sm mx-auto">
-                As Certified Nursing Assistants join Kindred in your area, they'll appear here. You can
-                also post a job and let caregivers come to you.
+                Our founding caregivers are being vetted now. Each one appears here once they meet the
+                Kindred Standard. You can also post what you need and let caregivers come to you.
               </p>
               <Link href="/client/post-job" className="inline-block mt-5 bg-deepteal text-cream px-5 py-2.5 rounded-full text-sm hover:bg-inkdark transition">
                 Post a job →
@@ -192,7 +179,9 @@ export default async function ClientBrowsePage() {
             </div>
           ) : (
             caregivers.map((c) => {
-              const fullName = `${c.display_name}${c.last_name ? ' ' + c.last_name[0] + '.' : ''}`;
+              const fullName = c.identity_unlocked
+                ? `${c.display_name ?? 'Caregiver'}${c.last_name ? ' ' + c.last_name[0] + '.' : ''}`
+                : `${(c.display_name ?? 'K').charAt(0).toUpperCase()}.`;
               const av = avatarClass(c.display_name);
               const tags = servicesByCna.get(c.user_id) ?? [];
               const isHired = hiredCnaIds.has(c.user_id);
@@ -215,10 +204,11 @@ export default async function ClientBrowsePage() {
                         <div>
                           <div className="font-display text-xl font-medium">{fullName}</div>
                           <div className="text-xs text-ink/60 mt-1 font-mono">
-                            {c.rating_avg != null && c.rating_count > 0
+                            {c.rating_avg != null && (c.rating_count ?? 0) > 0
                               ? `★ ${Number(c.rating_avg).toFixed(1)} · ${c.rating_count} reviews · `
                               : 'New to Kindred · '}
-                            {TIER_LABEL[c.tier] ?? c.tier}
+                            {c.experience_hours ? `${c.experience_hours.toLocaleString('en-US')}+ hrs · ` : ''}
+                            Kindred Standard ✓
                           </div>
                         </div>
                         <div className="text-right">
@@ -247,6 +237,7 @@ export default async function ClientBrowsePage() {
                         </div>
                       )}
                       <div className="flex gap-2 mt-4">
+                        {isMember || c.identity_unlocked ? (
                         <StartMessageModal
                           cnaId={c.user_id}
                           cnaName={fullName}
@@ -259,6 +250,14 @@ export default async function ClientBrowsePage() {
                           buttonClassName="flex-1 text-xs py-2 bg-deepteal text-cream rounded-full text-center hover:bg-inkdark transition"
                           buttonLabel="Message"
                         />
+                        ) : (
+                          <Link
+                            href="/client/membership"
+                            className="flex-1 text-xs py-2 bg-deepteal text-cream rounded-full text-center hover:bg-inkdark transition"
+                          >
+                            🔒 Unlock to message
+                          </Link>
+                        )}
                         <button className="flex-1 text-xs py-2 border border-ink/15 rounded-full hover:bg-mist transition">View profile</button>
                         <button className="w-9 h-9 flex items-center justify-center border border-ink/15 rounded-full hover:bg-coral hover:text-cream hover:border-coral transition" aria-label="Save">
                           ♡

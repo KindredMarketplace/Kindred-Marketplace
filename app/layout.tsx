@@ -1,8 +1,10 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Fraunces, JetBrains_Mono } from 'next/font/google';
 import { Suspense } from 'react';
 import './globals.css';
 import ImpersonationBanner from '@/components/ImpersonationBanner';
+import { RegisterServiceWorker } from '@/components/pwa/RegisterServiceWorker';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -25,14 +27,33 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Kindred — Compassionate care, when you need it most',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://kindredmarketplace.com'),
+  title: {
+    default: 'Kindred · A better way to connect',
+    template: '%s · Kindred',
+  },
   description:
-    'A Florida-first marketplace connecting families with vetted Certified Nursing Assistants.',
+    'Families and independent home caregivers, connected directly. Every caregiver is background-checked, ID-verified, insured and experienced. Gainesville, Florida.',
+  applicationName: 'Kindred',
+  appleWebApp: {
+    capable: true,
+    title: 'Kindred',
+    statusBarStyle: 'default',
+  },
+  formatDetection: { telephone: false },
   openGraph: {
     title: 'Kindred',
-    description: 'Compassionate care, when you need it most.',
+    description: 'A better way to connect.',
     type: 'website',
+    siteName: 'Kindred',
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#FBFAF6',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -51,6 +72,8 @@ export default function RootLayout({
           <ImpersonationBanner />
         </Suspense>
         {children}
+        <RegisterServiceWorker />
+        <InstallPrompt />
       </body>
     </html>
   );

@@ -9,7 +9,12 @@
  *   - The Apply section reflects the real application we built (resume + one
  *     short video), not the old 5-step form or the unverified fee/earnings claims.
  *
- * Server component; reads approved CNAs via the public RLS select policy.
+ * Server component; reads LISTED caregivers through browse_caregivers(), the
+ * locked-preview RPC (first initial only unless the viewer is a member).
+ *
+ * Copy reset Nov 2026 for the platform model: tagline "A better way to
+ * connect.", no "feels like family", no CNA training pipeline, no insurance
+ * billing, no payments through Kindred.
  */
 
 import Link from 'next/link';
@@ -17,6 +22,8 @@ import { createClient } from '@/lib/supabase/server';
 import { KindredMark } from '@/components/KindredMark';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
+import { getAllPlans } from '@/lib/membership';
+import { dollars, KINDRED_STANDARD } from '@/lib/membership-shared';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,17 +35,19 @@ type CaregiverRow = {
   years_experience: number | null;
   service_zip: string | null;
   languages: string[] | null;
+  identity_unlocked: boolean;
 };
 
 const AV = ['av-1', 'av-2', 'av-3', 'av-4', 'av-6', 'av-7', 'av-9'];
 
 const TICKER = [
-  '✦ Every caregiver vetted by a real human',
-  'Background checks before anyone goes live',
-  'HIPAA-minded messaging',
-  'Hire directly — no agency markup',
+  '✦ Personal interview with every caregiver',
+  'Level 2 background check',
+  'ID verified',
+  'Every caregiver carries their own insurance',
+  '1,500+ hours of hands-on experience',
   'Caregivers set their own rates',
-  'Dignity first, always',
+  'No agency in the middle',
 ];
 
 const QUICK_FILTERS = [
@@ -46,12 +55,13 @@ const QUICK_FILTERS = [
   'Hospice support', 'Post-surgical recovery',
 ];
 
+// Every listed caregiver has all of these (it's what "listed" means), so the
+// homepage filter preview shows them as the standard, not as optional filters.
 const VERIFICATIONS = [
-  ['Level 2 background check', 'FL fingerprint screening (AHCA)'],
-  ['Self-insured (liability)', 'Carries personal liability + malpractice'],
-  ['CPR / AED certified', 'Current within 2 years'],
+  ['Level 2 background check', 'Florida fingerprint screening'],
+  ['Carries their own liability insurance', 'Proof uploaded and checked'],
   ['ID verified', 'Government photo ID confirmed'],
-  ['References verified', '2+ professional references checked'],
+  ['1,500+ hours of experience', 'Hands-on care, not just a certificate'],
 ];
 
 const SERVICE_GROUPS = [
@@ -63,17 +73,14 @@ const SERVICE_GROUPS = [
 ];
 
 const LANGUAGES = ['English', 'Español', 'Kreyòl', 'ASL', 'Tagalog'];
-const INSURANCE = ['Medicare', 'Medicaid', 'Long-term care insurance', 'VA benefits', 'Self-pay only'];
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from('cna_profiles')
-    .select('user_id, display_name, headline, hourly_rate_cents, years_experience, service_zip, languages')
-    .eq('application_status', 'approved')
-    .limit(9);
+  const [{ data }, plans] = await Promise.all([supabase.rpc('browse_caregivers'), getAllPlans(supabase)]);
 
-  const cnas = (data ?? []) as CaregiverRow[];
+  const cnas = (data ?? []).slice(0, 9) as CaregiverRow[];
+  const familyPlan = plans.find((p) => p.role === 'client');
+  const caregiverPlan = plans.find((p) => p.role === 'cna');
   const featured = cnas[0];
 
   return (
@@ -90,17 +97,17 @@ export default async function HomePage() {
           <div className="lg:col-span-7 fade-up">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-ink/15 bg-white/60 backdrop-blur text-xs font-mono mb-6">
               <span className="w-2 h-2 rounded-full bg-coral animate-pulse" />
-              Now serving Alachua, Marion &amp; Putnam counties
+              Launching in Gainesville, Florida
             </div>
             <h1 className="font-display text-5xl md:text-6xl lg:text-[5.5rem] leading-[0.95] tracking-tight font-light">
-              The care your family deserves,
+              A better way
               <br />
-              <span className="italic font-medium text-gradient">from people who feel like family.</span>
+              <span className="italic font-medium text-gradient">to connect.</span>
             </h1>
             <p className="mt-6 text-lg md:text-xl text-ink/70 max-w-2xl leading-relaxed font-light">
-              Browse vetted Certified Nursing Assistants in your neighborhood. Filter by skills,
-              schedule, and background-check status — and book directly with the caregiver who feels
-              right.
+              Families and independent caregivers, connected directly. Browse caregivers who meet
+              the Kindred Standard, see their rates up front, talk to them before you choose, and hire
+              them yourself. No agency in the middle, and no cut taken from anyone&apos;s pay.
             </p>
 
             {/* Mobile search */}
@@ -133,15 +140,15 @@ export default async function HomePage() {
                     </span>
                   </div>
                   <div>
-                    <div className="font-display text-lg font-medium">{featured.display_name}</div>
+                    <div className="font-display text-lg font-medium">{featured.identity_unlocked ? featured.display_name : `${(featured.display_name ?? 'K').charAt(0)}.`}</div>
                     <div className="text-xs text-ink/60">
-                      CNA{featured.years_experience ? ` · ${featured.years_experience} yrs` : ''}
+                      Caregiver{featured.years_experience ? ` · ${featured.years_experience} yrs` : ''}
                       {featured.service_zip ? ` · ${featured.service_zip}` : ''}
                     </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 text-[10px] mb-3">
-                  <span className="bg-sage/20 text-deepteal px-2 py-0.5 rounded-full font-medium">✓ Vetted</span>
+                  <span className="bg-sage/20 text-deepteal px-2 py-0.5 rounded-full font-medium">✓ Kindred Standard</span>
                   {featured.languages?.slice(0, 2).map((l) => (
                     <span key={l} className="bg-sky/20 text-deepteal px-2 py-0.5 rounded-full font-medium">{l}</span>
                   ))}
@@ -170,13 +177,13 @@ export default async function HomePage() {
             {/* Honest brand card */}
             <div className="absolute top-44 left-0 w-64 bg-deepteal text-cream rounded-2xl p-5 -rotate-6 hover:rotate-0 transition-transform duration-500" style={{ boxShadow: '0 30px 60px -20px rgba(46,110,115,0.4)' }}>
               <div className="text-xs uppercase tracking-widest opacity-60 mb-2 font-mono">Our promise</div>
-              <div className="font-display text-2xl leading-tight font-light">Every caregiver, vetted by a real human before they ever reach you.</div>
+              <div className="font-display text-2xl leading-tight font-light">Interviewed, background-checked, ID-verified and insured. Every one.</div>
             </div>
 
             {/* Brand accent card */}
             <div className="absolute bottom-4 right-12 w-60 bg-butter rounded-2xl p-4 rotate-6 hover:rotate-0 transition-transform duration-500" style={{ boxShadow: '0 20px 40px -15px rgba(46,110,115,0.25)' }}>
               <div className="text-[10px] font-mono uppercase tracking-widest text-deepteal/70 mb-2">Why Kindred</div>
-              <div className="font-display text-sm leading-snug text-deepteal italic">You hire the caregiver directly. No agency taking the bigger half.</div>
+              <div className="font-display text-sm leading-snug text-deepteal italic">You hire the caregiver directly. They keep 100% of their rate.</div>
             </div>
           </div>
         </div>
@@ -201,24 +208,23 @@ export default async function HomePage() {
             </h2>
           </div>
           <p className="md:col-span-5 md:col-start-7 text-ink/70 leading-relaxed">
-            No agencies. No middlemen taking the bigger half. Just real caregivers, real reviews, and
-            a transparent way to find someone you trust — whether you need a few hours a week or
-            round-the-clock care.
+            Healthcare is going direct. Home care should too. Kindred makes the connection, then gets
+            out of the way, whether you need a few hours a week or round-the-clock care.
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
-          <HowCard n="01" title="Search & filter">
-            Browse caregivers by experience, services offered, schedule, languages, and verification
-            status. See real photos, real prices, real reviews.
+          <HowCard n="01" title="Browse for free">
+            See real caregivers near you: their experience, services, languages and rate. Every one
+            meets the Kindred Standard. Names and photos unlock when you join.
           </HowCard>
-          <HowCard n="02" title="Message & meet">
-            Chat directly with caregivers through HIPAA-minded messaging. Schedule a free
-            introduction call before you commit to anything.
+          <HowCard n="02" title="Talk before you choose">
+            Message caregivers, set up a call, meet in person. Ask what matters to you. Talk to as
+            many as you like.
           </HowCard>
-          <HowCard n="03" title="Book & pay safely">
-            Pay by the hour, day, or week — your choice. Self-pay supported at launch, with insurance
-            billing support on the way. Funds released as care is delivered.
+          <HowCard n="03" title="Hire them directly">
+            You and your caregiver agree on the work and the schedule, and you pay them directly at
+            the rate they set. Kindred never takes a cut.
           </HowCard>
         </div>
       </section>
@@ -285,17 +291,6 @@ export default async function HomePage() {
                 </div>
               </FilterGroup>
 
-              <FilterGroup label="Insurance accepted">
-                <div className="space-y-2">
-                  {INSURANCE.map((i) => (
-                    <label key={i} className="flex items-center gap-2.5 cursor-pointer">
-                      <input type="checkbox" className="w-4 h-4 rounded border-ink/30 accent-deepteal" />
-                      <span className="text-sm">{i}</span>
-                    </label>
-                  ))}
-                </div>
-              </FilterGroup>
-
               <FilterGroup label="Services offered">
                 <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
                   {SERVICE_GROUPS.map((g) => (
@@ -330,9 +325,9 @@ export default async function HomePage() {
             {cnas.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-2xl border border-ink/10">
                 <div className="font-display text-3xl font-light mb-3">Our founding caregivers are being vetted now.</div>
-                <p className="text-ink/60 mb-6 max-w-md mx-auto">Every caregiver goes through a real interview before they appear here. The first profiles are coming soon.</p>
-                <Link href="/signup" className="bg-deepteal text-cream px-6 py-3 rounded-full text-sm font-medium hover:bg-inkdark transition inline-block">
-                  Create an account to get matched
+                <p className="text-ink/60 mb-6 max-w-md mx-auto">Every caregiver has to meet the Kindred Standard before they appear here. The first profiles are coming soon.</p>
+                <Link href="/kindred-standard" className="bg-deepteal text-cream px-6 py-3 rounded-full text-sm font-medium hover:bg-inkdark transition inline-block">
+                  See what every caregiver has to show
                 </Link>
               </div>
             ) : (
@@ -346,58 +341,38 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ===================== BECOME A CNA ===================== */}
-      <section id="become" className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-kindred-gradient opacity-95" />
-        <div className="absolute inset-0 grain pointer-events-none" />
-        <div className="relative max-w-[1400px] mx-auto px-6 grid lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-6 text-white">
-            <div className="text-xs font-mono uppercase tracking-widest opacity-80 mb-4">— Become a CNA</div>
+      {/* ===================== THE KINDRED STANDARD ===================== */}
+      <section id="standard" className="relative py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-deepteal via-teal to-sky" />
+        <div className="relative max-w-[1400px] mx-auto px-6 grid lg:grid-cols-12 gap-12 items-center text-white">
+          <div className="lg:col-span-6">
+            <div className="text-xs font-mono uppercase tracking-widest opacity-80 mb-4">— The Kindred Standard</div>
             <h2 className="font-display text-4xl md:text-6xl font-light leading-[1.05] mb-6">
-              Start your career in care.
+              Five things.
               <br />
-              <span className="italic">Locally.</span>
+              <span className="italic">No exceptions.</span>
             </h2>
             <p className="text-lg opacity-90 leading-relaxed mb-8 max-w-lg font-light">
-              We&apos;re partnering with state-approved CNA training programs across Florida. Apply
-              through Kindred and we&apos;ll help match you to a school in your area — most students
-              certify in 4 to 6 weeks.
+              Before anyone can appear on Kindred, they have to show us every one of these. When a
+              background check or insurance policy expires, they drop out of search until it&apos;s
+              renewed.
             </p>
-            <ul className="space-y-3 text-white/95">
-              {['Financial aid & payment plans at most partner schools', 'Day, evening, and weekend cohorts', "Join Kindred the day you're certified — start earning right away"].map((t) => (
-                <li key={t} className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">✓</span>
-                  <span>{t}</span>
+            <Link href="/kindred-standard" className="bg-white text-deepteal px-7 py-3.5 rounded-full font-medium hover:bg-cream transition shadow-lg inline-block">
+              Read the full standard →
+            </Link>
+          </div>
+          <div className="lg:col-span-6">
+            <ul className="bg-white/95 text-ink rounded-3xl p-6 sm:p-8 space-y-4">
+              {KINDRED_STANDARD.map((item) => (
+                <li key={item.key} className="flex gap-3 items-start">
+                  <span className="mt-0.5 w-6 h-6 rounded-full bg-deepteal text-cream flex items-center justify-center text-xs shrink-0">✓</span>
+                  <div>
+                    <div className="font-medium">{item.title}</div>
+                    <div className="text-sm text-ink/60">{item.detail}</div>
+                  </div>
                 </li>
               ))}
             </ul>
-            <div className="flex flex-wrap gap-3 mt-10">
-              <Link href="/become-a-cna" className="bg-white text-deepteal px-7 py-3.5 rounded-full font-medium hover:bg-cream transition shadow-lg inline-block">
-                Find programs near me →
-              </Link>
-              <Link href="/apply" className="border-2 border-white text-white px-7 py-3.5 rounded-full font-medium hover:bg-white hover:text-deepteal transition inline-block">
-                Already a CNA? Apply
-              </Link>
-            </div>
-          </div>
-
-          {/* Honest: partner programs coming soon (schools not signed yet) */}
-          <div className="lg:col-span-6">
-            <div className="text-xs font-mono uppercase tracking-widest text-white/70 mb-3">Partner programs</div>
-            <div className="bg-white/95 backdrop-blur rounded-2xl p-8 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-kindred-gradient mx-auto flex items-center justify-center mb-4">
-                <KindredMark size={28} />
-              </div>
-              <div className="font-display text-2xl font-medium mb-2">Schools are coming online soon.</div>
-              <p className="text-sm text-ink/60 max-w-sm mx-auto">
-                We&apos;re finalizing partnerships with CNA training programs across North Central
-                Florida. Tell us you&apos;re interested and we&apos;ll point you to one as soon as
-                they&apos;re listed.
-              </p>
-              <Link href="/become-a-cna" className="mt-5 inline-block bg-deepteal text-cream px-6 py-2.5 rounded-full text-sm font-medium hover:bg-inkdark transition">
-                Notify me about programs
-              </Link>
-            </div>
           </div>
         </div>
       </section>
@@ -408,7 +383,7 @@ export default async function HomePage() {
           <div className="lg:col-span-5">
             <div className="text-xs font-mono uppercase tracking-widest text-coral mb-3">— Apply to Kindred</div>
             <h2 className="font-display text-4xl md:text-5xl leading-tight font-light mb-6">
-              Already a CNA? <span className="italic">Build your business</span> on Kindred.
+              Experienced caregiver? <span className="italic">Work on your own terms.</span>
             </h2>
             <p className="text-ink/70 leading-relaxed mb-8">
               Set your own rate. Choose your own clients. Work on your own schedule. We keep the bar
@@ -447,8 +422,8 @@ export default async function HomePage() {
             </div>
             <div className="mb-6">
               <div className="text-xs font-mono uppercase tracking-widest text-ink/60 mb-3">If we move forward, you&apos;ll verify</div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {[['Level 2 BG check', 'AHCA / Checkr'], ['License verify', 'FL DOH lookup'], ['ID verification', 'photo + selfie'], ['CPR / AED', 'card upload'], ['2 references', "we'll contact"], ['TB & immunizations', 'within 1 year']].map(([t, s]) => (
+              <div className="grid grid-cols-2 gap-2">
+                {[['Level 2 background', 'fingerprint check'], ['ID verification', 'government photo ID'], ['Liability insurance', 'your own policy'], ['1,500+ hours', 'hands-on experience']].map(([t, s]) => (
                   <div key={t} className="bg-mist/60 rounded-lg p-3 text-xs">
                     <div className="font-medium mb-0.5">{t}</div>
                     <div className="text-ink/50">{s}</div>
@@ -464,64 +439,74 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ===================== INSURANCE & BILLING ===================== */}
-      <section id="insurance" className="bg-mist/40 py-24">
+      {/* ===================== HOW KINDRED MAKES MONEY ===================== */}
+      <section id="pricing" className="bg-mist/40 py-24">
         <div className="max-w-[1100px] mx-auto px-6">
           <div className="text-center mb-12">
-            <div className="text-xs font-mono uppercase tracking-widest text-coral mb-3">— Insurance & billing</div>
+            <div className="text-xs font-mono uppercase tracking-widest text-coral mb-3">— Straight answers</div>
             <h2 className="font-display text-4xl md:text-5xl leading-tight font-light">
-              Straight answers about <span className="italic">paying for care.</span>
+              How Kindred <span className="italic">makes money.</span>
             </h2>
             <p className="text-ink/70 mt-4 max-w-2xl mx-auto">
-              We&apos;d rather be honest than oversell. Here&apos;s what Kindred supports today, and
-              what&apos;s on the way.
+              Only from memberships. We don&apos;t take a percentage of care, we don&apos;t add a fee to a
+              caregiver&apos;s rate, and we never sit between what a family pays and what a caregiver
+              earns.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 mb-12">
             <div className="bg-white rounded-2xl p-7 border border-ink/10">
-              <div className="w-12 h-12 rounded-xl bg-coral flex items-center justify-center mb-4 text-white font-display text-xl">$</div>
-              <h3 className="font-display text-xl font-medium mb-2">Self-pay (today)</h3>
-              <p className="text-sm text-ink/70 leading-relaxed mb-4">
-                At launch, families pay directly through Kindred with secure processing. You pay for
-                care as it&apos;s delivered, and your caregiver is paid promptly.
-              </p>
-              <ul className="text-sm text-ink/70 space-y-1.5">
-                <li className="flex gap-2"><span className="text-deepteal">✓</span> Pay by the hour, day, or week</li>
-                <li className="flex gap-2"><span className="text-deepteal">✓</span> No agency markup on the caregiver&apos;s rate</li>
+              <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">For families</div>
+              {familyPlan ? (
+                <div className="font-display text-4xl font-medium">
+                  {dollars(familyPlan.monthly_cents)}<span className="text-base text-ink/50 font-sans">/month</span>
+                </div>
+              ) : (
+                <div className="font-display text-2xl font-medium">Membership</div>
+              )}
+              {familyPlan && familyPlan.startup_fee_cents > 0 && (
+                <div className="text-sm text-ink/60 mt-1">+ {dollars(familyPlan.startup_fee_cents)} one-time startup fee</div>
+              )}
+              <ul className="text-sm text-ink/70 space-y-1.5 mt-5">
+                <li className="flex gap-2"><span className="text-deepteal">✓</span> Browse free, before you pay anything</li>
+                <li className="flex gap-2"><span className="text-deepteal">✓</span> Names, photos and messaging unlock with membership</li>
+                <li className="flex gap-2"><span className="text-deepteal">✓</span> You pay your caregiver directly, at their rate</li>
               </ul>
             </div>
             <div className="bg-white rounded-2xl p-7 border border-ink/10">
-              <div className="w-12 h-12 rounded-xl bg-kindred-gradient flex items-center justify-center mb-4 text-white font-display text-xl">K</div>
-              <h3 className="font-display text-xl font-medium mb-2">Insurance support (on the way)</h3>
-              <p className="text-sm text-ink/70 leading-relaxed mb-4">
-                Long-term care reimbursement help and Medicaid billing support are on our roadmap.
-                We&apos;ll add them deliberately — and we&apos;ll never claim to cover something we
-                don&apos;t.
-              </p>
-              <ul className="text-sm text-ink/70 space-y-1.5">
-                <li className="flex gap-2"><span className="text-deepteal">✓</span> LTC reimbursement documents (planned)</li>
-                <li className="flex gap-2"><span className="text-deepteal">✓</span> Florida Medicaid billing (planned)</li>
+              <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">For caregivers</div>
+              {caregiverPlan ? (
+                <div className="font-display text-4xl font-medium">
+                  {dollars(caregiverPlan.monthly_cents)}<span className="text-base text-ink/50 font-sans">/month</span>
+                </div>
+              ) : (
+                <div className="font-display text-2xl font-medium">Membership</div>
+              )}
+              <div className="text-sm text-deepteal font-medium mt-1">First 25 approved caregivers: a full year free</div>
+              <ul className="text-sm text-ink/70 space-y-1.5 mt-5">
+                <li className="flex gap-2"><span className="text-deepteal">✓</span> Set your own rate and keep all of it</li>
+                <li className="flex gap-2"><span className="text-deepteal">✓</span> Choose your hours, your area and your families</li>
+                <li className="flex gap-2"><span className="text-deepteal">✓</span> No agency, no insurance billing paperwork</li>
               </ul>
             </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-ink/10 overflow-hidden">
-            <Faq q="Does Medicare cover in-home CNA care?">
-              Generally, no — Medicare doesn&apos;t cover routine non-medical home care, though it may
-              cover skilled nursing or therapy for qualifying conditions. Some Medicare Advantage
-              plans now include limited home-care benefits. We&apos;ll always tell you plainly what
-              applies rather than imply coverage that isn&apos;t there.
+            <Faq q="Who employs the caregiver?">
+              You do. Kindred is a platform, not an agency. You and your caregiver agree on the work,
+              the schedule and the rate, and you pay them directly. If you hire someone for many hours
+              a week, it&apos;s worth reading up on household-employer rules or using a household payroll
+              service.
             </Faq>
-            <Faq q="What about long-term care insurance and VA benefits?">
-              Most major LTC policies reimburse for in-home CNA care, and veterans may qualify through
-              programs like Aid &amp; Attendance. Helping you assemble the visit logs and invoices
-              those programs require is on our near-term roadmap.
+            <Faq q="Can I use Medicare, Medicaid or insurance?">
+              Not through Kindred. Kindred is for families paying privately. Some long-term care
+              insurance policies reimburse families for in-home care they arrange themselves, so check
+              your policy.
             </Faq>
-            <Faq q="How does vetting work before someone can be hired?" last>
-              Every caregiver completes an application and a real interview before we ever invest in
-              the expensive checks — license verification, a Level 2 background check, ID, CPR/AED, TB
-              clearance, and references. Only after all of that does a profile go live.
+            <Faq q="Why does it cost anything at all?" last>
+              Membership pays for the vetting (interviews, background and ID checks, insurance
+              verification) and for keeping Kindred running. Charging for access instead of taking a
+              cut is what lets caregivers keep their full rate.
             </Faq>
           </div>
         </div>
@@ -550,13 +535,13 @@ export default async function HomePage() {
           <div className="relative px-8 md:px-16 py-20 text-center">
             <div className="flex justify-center mb-6 opacity-90"><KindredMark size={60} /></div>
             <h2 className="font-display text-4xl md:text-6xl font-light text-cream leading-tight mb-6">
-              Care that feels like
+              A better way
               <br />
-              <span className="italic text-gradient bg-gradient-to-r from-sage via-teal to-sky">family.</span>
+              <span className="italic text-gradient bg-gradient-to-r from-sage via-teal to-sky">to connect.</span>
             </h2>
             <p className="text-cream/80 text-lg max-w-2xl mx-auto mb-10 font-light">
-              Whether you&apos;re searching for help, ready to start your career in care, or training
-              to become a CNA — Kindred is here.
+              Whether you&apos;re looking for care for someone you love, or you&apos;re an experienced
+              caregiver who wants to work on your own terms, Kindred is here.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Link href="/browse" className="bg-cream text-deepteal px-8 py-4 rounded-full font-medium hover:bg-coral hover:text-cream transition">Find a caregiver</Link>
@@ -623,7 +608,7 @@ function CaregiverCard({ c, av }: { c: CaregiverRow; av: string }) {
         <div className={`h-40 ${av} relative`}>
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
           <div className="absolute top-3 left-3">
-            <span className="bg-sage/30 text-deepteal px-2 py-0.5 rounded-full font-medium text-[10px]">✓ Vetted</span>
+            <span className="bg-white/90 text-deepteal px-2 py-0.5 rounded-full font-medium text-[10px]">✓ Kindred Standard</span>
           </div>
         </div>
         <div className="absolute -bottom-8 left-5">
@@ -633,9 +618,11 @@ function CaregiverCard({ c, av }: { c: CaregiverRow; av: string }) {
         </div>
       </div>
       <div className="pt-10 px-5 pb-5 flex-1 flex flex-col">
-        <h3 className="font-display text-lg font-medium leading-tight">{c.display_name}</h3>
+        <h3 className="font-display text-lg font-medium leading-tight">
+          {c.identity_unlocked ? c.display_name : `${(c.display_name ?? 'K').charAt(0)}.`}
+        </h3>
         <div className="text-xs text-ink/60 mb-3">
-          CNA{c.years_experience ? ` · ${c.years_experience} yrs` : ''}{c.service_zip ? ` · ${c.service_zip}` : ''}
+          Caregiver{c.years_experience ? ` · ${c.years_experience} yrs` : ''}{c.service_zip ? ` · ${c.service_zip}` : ''}
         </div>
         {c.headline && <p className="text-sm text-ink/70 italic font-display leading-snug mb-3">&ldquo;{c.headline}&rdquo;</p>}
         <div className="mt-auto pt-3 border-t border-ink/10 flex items-end justify-between">

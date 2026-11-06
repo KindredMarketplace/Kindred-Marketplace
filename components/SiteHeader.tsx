@@ -76,6 +76,7 @@ export function SiteHeader() {
             <Link href="/browse" className="px-3 py-2 text-sm hover:text-coral transition">Browse</Link>
             <Link href="/apply" className="px-3 py-2 text-sm hover:text-coral transition">Apply now</Link>
             <Link href="/how-it-works" className="px-3 py-2 text-sm hover:text-coral transition">How it works</Link>
+            <Link href="/kindred-standard" className="px-3 py-2 text-sm hover:text-coral transition">Our standard</Link>
             <Link
               href="/signup"
               className="ml-2 bg-ink text-cream px-4 py-2 rounded-full text-sm hover:bg-coral transition inline-block"
@@ -95,6 +96,7 @@ export function SiteHeader() {
               <Link href="/browse" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist">Browse caregivers</Link>
               <Link href="/apply" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist">Apply now</Link>
               <Link href="/how-it-works" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist">How it works</Link>
+              <Link href="/kindred-standard" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist">Our standard</Link>
               <div className="h-px bg-ink/10 my-2" />
               <Link href="/login" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist">Log in</Link>
               <Link href="/signup" className="block px-4 py-2.5 text-sm rounded-lg hover:bg-mist font-medium text-coral">Sign up</Link>

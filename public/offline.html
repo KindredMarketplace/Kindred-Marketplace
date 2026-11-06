@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FBFAF6">
+<title>Kindred · Offline</title>
+<style>
+  :root { --cream:#FBFAF6; --ink:#1F3A3D; --deepteal:#2E6E73; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:var(--cream); color:var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; padding:24px; }
+  main { max-width:360px; text-align:center; }
+  img { width:72px; height:72px; }
+  h1 { font-family: Georgia, serif; font-weight:500; font-size:28px; margin:20px 0 8px; }
+  p { color: rgba(31,58,61,.7); line-height:1.5; margin:0 0 24px; }
+  button { background:var(--ink); color:var(--cream); border:0; border-radius:999px; padding:12px 24px; font-size:15px; cursor:pointer; }
+</style>
+</head>
+<body>
+<main>
+  <img src="/brand/kindred-k.png" alt="Kindred">
+  <h1>You're offline</h1>
+  <p>Kindred needs a connection to load your messages and care details. We'll be right here when you're back.</p>
+  <button onclick="location.reload()">Try again</button>
+</main>
+</body>
+</html>

@@ -1,158 +1,108 @@
 /**
- * /pricing — ported from Front-End/Homepage/pricing.html, made honest.
+ * /pricing — membership pricing (platform model, Nov 2026).
  *
- * The fee model is an OPEN decision (tracker Q2), so the mock's hard numbers
- * (12% / 9% service fees, the $716.80 worked example, "$48–62/hr vs agency",
- * the caregiver take-home tables, "direct deposit within 24h", GPS Sunday
- * charge, SOC 2 + HIPAA + AHCA) are all removed. This page commits only to the
- * pricing PRINCIPLES that are actually decided:
- *   - caregivers set their own rate and keep 100% of it;
- *   - the service fee is paid by the family, on top — never taken from the CNA;
- *   - the all-in price is always shown before you book;
- *   - the exact fee is being finalized before launch.
+ * Kindred charges for ACCESS, never for care:
+ *   - a one-time startup fee + a monthly membership, per side
+ *   - prices come live from public.access_plans (no hard-coded numbers)
+ *   - caregivers keep 100% of the rate they set; families pay them directly
+ *   - the first 25 approved caregivers get a full year free
+ *
+ * The old "service fee on top of the caregiver's rate" model is gone: taking
+ * a cut of care fees is what makes a business an agency / nurse registry.
  */
 
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
+import { createClient } from '@/lib/supabase/server';
+import { getAllPlans } from '@/lib/membership';
+import { dollars, type AccessPlan } from '@/lib/membership-shared';
 
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = {
+  title: 'Pricing',
+  description: 'Kindred charges a simple membership. Never a cut of care. Caregivers keep 100% of their rate.',
+};
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const supabase = await createClient();
+  const plans = await getAllPlans(supabase);
+  const family = plans.find((p) => p.role === 'client');
+  const caregiver = plans.find((p) => p.role === 'cna');
+
   return (
     <div className="min-h-screen bg-cream">
       <SiteHeader />
 
-      {/* HERO */}
       <section className="max-w-[1100px] mx-auto px-6 py-16 lg:py-20 text-center fade-up">
         <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-3">Pricing</div>
         <h1 className="font-display text-5xl md:text-6xl font-light leading-tight mb-5">
-          Honest, <span className="italic font-medium text-gradient">no-surprise pricing.</span>
+          A membership. <span className="italic font-medium text-gradient">Never a cut.</span>
         </h1>
         <p className="text-lg text-ink/70 max-w-2xl mx-auto leading-relaxed">
-          Caregivers set their own hourly rate. Families pay a small service fee on top — for
-          vetting, secure payments, and support. You always see the all-in total before you book.
+          Kindred makes money one way: memberships. We don&apos;t take a percentage of care, we
+          don&apos;t add fees to a caregiver&apos;s rate, and we don&apos;t sit in the middle of what a
+          family pays their caregiver.
         </p>
       </section>
 
-      {/* THE TWO SIDES */}
-      <section className="max-w-[1100px] mx-auto px-6 py-8">
+      <section className="max-w-[1100px] mx-auto px-6 pb-12">
         <div className="grid md:grid-cols-2 gap-5">
-          <div className="bg-white border border-ink/10 rounded-3xl p-7">
-            <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">For families</div>
-            <h2 className="font-display text-2xl font-medium mb-3">What you pay</h2>
-            <p className="text-sm text-ink/75 leading-relaxed mb-4">
-              You pay the caregiver&apos;s rate, plus a Kindred service fee on top. No subscription, no
-              setup cost, and the full hourly total is shown before you ever confirm a booking.
-            </p>
-            <ul className="space-y-2.5 text-sm">
-              {['Browse and message caregivers for free', 'Free meet-and-greets before you commit', 'Vetting and secure payments included in the fee', 'The all-in price shown up front — no surprises'].map((t) => (
-                <li key={t} className="flex items-start gap-2"><span className="text-deepteal mt-0.5">✓</span> {t}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="bg-white border border-ink/10 rounded-3xl p-7">
-            <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">For caregivers</div>
-            <h2 className="font-display text-2xl font-medium mb-3">What you keep</h2>
-            <p className="text-sm text-ink/75 leading-relaxed mb-4">
-              You keep <strong className="text-deepteal">100% of the rate you set</strong>. The service
-              fee is paid by the family, on top — it never comes out of your pocket. We don&apos;t take
-              a cut of your rate.
-            </p>
-            <ul className="space-y-2.5 text-sm">
-              {['Set your own hourly rate', 'Keep every dollar of it', 'Get paid promptly after each shift', 'A 1099 each January, with tax guidance'].map((t) => (
-                <li key={t} className="flex items-start gap-2"><span className="text-deepteal mt-0.5">✓</span> {t}</li>
-              ))}
-            </ul>
-          </div>
+          <PlanCard
+            eyebrow="For families"
+            plan={family}
+            points={[
+              'Browse every listed caregiver free, before you pay anything',
+              'Names, photos and messaging unlock with membership',
+              'Talk to as many caregivers as you like before you choose',
+              'Pay your caregiver directly, at the rate they set',
+              'Cancel anytime',
+            ]}
+            cta={{ href: '/signup?role=client', label: 'Create a family account' }}
+          />
+          <PlanCard
+            eyebrow="For caregivers"
+            plan={caregiver}
+            highlight="First 25 approved caregivers: a full year free, startup fee included."
+            points={[
+              'Set your own rate and keep 100% of it',
+              'Choose your hours, your area and the families you work with',
+              'Families come to you already knowing you meet the Kindred Standard',
+              'No agency, no insurance billing paperwork',
+              'Cancel anytime',
+            ]}
+            cta={{ href: '/apply', label: 'Apply to Kindred' }}
+          />
         </div>
       </section>
 
-      {/* STRUCTURE (conceptual, no fabricated numbers) */}
-      <section className="bg-mist/40 py-16 mt-8">
-        <div className="max-w-[760px] mx-auto px-6">
-          <div className="text-center mb-8">
-            <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">How it adds up</div>
-            <h2 className="font-display text-3xl md:text-4xl font-light">The whole structure, <span className="italic font-medium">in plain view</span></h2>
-          </div>
-          <div className="bg-white border border-ink/10 rounded-3xl p-8">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-3 border-b border-ink/10">
-                <span className="text-sm">The caregiver&apos;s hourly rate <span className="text-ink/50">(they keep all of it)</span></span>
-                <span className="font-mono text-ink/40">rate</span>
-              </div>
-              <div className="flex items-center justify-between py-3 border-b border-ink/10">
-                <span className="text-sm">+ Kindred service fee <span className="text-ink/50">(paid by you, on top)</span></span>
-                <span className="font-mono text-ink/40">fee</span>
-              </div>
-              <div className="flex items-center justify-between py-3">
-                <span className="font-display text-lg font-medium">= Your all-in hourly cost</span>
-                <span className="font-mono text-deepteal">shown before you book</span>
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 bg-white border border-teal/30 rounded-2xl p-5 text-sm leading-relaxed text-ink/80">
-            <strong>On the exact fee:</strong> we&apos;re finalizing our service fee before launch, so
-            we&apos;re not going to publish a number we might change. Whatever it lands at, two things
-            stay true — caregivers keep 100% of their rate, and you&apos;ll always see the full price
-            before you pay a cent.
-          </div>
-        </div>
-      </section>
-
-      {/* FACILITIES */}
-      <section className="max-w-[1100px] mx-auto px-6 py-16">
-        <div className="bg-white border border-ink/10 rounded-3xl p-8 md:p-10 grid md:grid-cols-[1fr_auto] gap-6 items-center">
-          <div>
-            <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">For facilities</div>
-            <h2 className="font-display text-2xl md:text-3xl font-medium mb-2">Custom pricing, coming after launch</h2>
-            <p className="text-sm text-ink/75 leading-relaxed max-w-xl">
-              For assisted living, memory care, and skilled nursing, we&apos;ll offer volume pricing on
-              a single monthly invoice once the facilities side opens. If you&apos;d like early access,
-              we&apos;d love to talk.
-            </p>
-          </div>
-          <Link href="/contact" className="inline-flex bg-deepteal text-cream px-6 py-3 rounded-full text-sm hover:bg-inkdark transition whitespace-nowrap">
-            Talk to us →
-          </Link>
-        </div>
-      </section>
-
-      {/* FAQ */}
       <section className="bg-mist/40 py-16">
         <div className="max-w-[900px] mx-auto px-6">
-          <h2 className="font-display text-3xl font-light text-center mb-10">Common questions</h2>
-          <div className="space-y-3">
-            <Faq q="How much is the service fee?">
-              We&apos;re finalizing it before launch, so we won&apos;t quote a number we might change.
-              What&apos;s fixed: it&apos;s paid by the family on top of the caregiver&apos;s rate, it&apos;s
-              never taken from the caregiver, and you&apos;ll see the full all-in price before you book.
-            </Faq>
-            <Faq q="Is there a minimum number of hours?">
-              No minimum. Some families book a single short visit; others arrange many hours a week.
-              You arrange what you need with your caregiver.
-            </Faq>
-            <Faq q="Are caregivers employees of Kindred?">
-              No — caregivers on Kindred are independent professionals (1099), not Kindred employees,
-              and you&apos;re not their employer of record either. They set their own rates and choose
-              their own clients.
-            </Faq>
-            <Faq q="Can I use long-term care insurance or VA benefits?">
-              Most LTC policies reimburse for in-home CNA care, and some veterans qualify for help.
-              Kindred is building tools to generate the documentation you&apos;d need to file.{' '}
-              <Link href="/insurance-billing" className="text-deepteal underline">More on insurance &amp; billing →</Link>
-            </Faq>
+          <h2 className="font-display text-3xl font-light text-center mb-8">
+            Why it works <span className="italic">this way</span>
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-5 text-sm text-ink/75 leading-relaxed">
+            <div className="bg-white border border-ink/10 rounded-2xl p-5">
+              <div className="font-medium text-ink mb-1">Agencies take the bigger half</div>
+              A family can pay an agency far more per hour than the caregiver ever sees. Without a
+              middleman, families can pay less and caregivers can earn more.
+            </div>
+            <div className="bg-white border border-ink/10 rounded-2xl p-5">
+              <div className="font-medium text-ink mb-1">You hire directly</div>
+              You and your caregiver agree on the work, the schedule and the rate. Kindred isn&apos;t
+              the employer and never touches that money.
+            </div>
+            <div className="bg-white border border-ink/10 rounded-2xl p-5">
+              <div className="font-medium text-ink mb-1">Membership pays for trust</div>
+              Interviews, background and ID checks, and insurance verification cost real money.
+              Membership covers it, and keeps the bar high.
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-16 text-center max-w-[900px] mx-auto px-6">
-        <h3 className="font-display text-3xl md:text-4xl font-light mb-3">Ready to start?</h3>
-        <p className="text-ink/70 mb-6">Browsing is free, and you only need an account to message or book.</p>
-        <div className="flex flex-wrap justify-center gap-3">
-          <Link href="/browse" className="bg-coral text-cream px-6 py-3 rounded-full text-sm hover:bg-inkdark transition">Browse caregivers</Link>
-          <Link href="/apply" className="bg-white border border-ink/15 px-6 py-3 rounded-full text-sm hover:bg-mist transition">Apply as a CNA</Link>
+          <p className="text-center text-xs text-ink/50 mt-8">
+            Kindred is for families paying privately. We don&apos;t bill Medicare, Medicaid or
+            insurance.
+          </p>
         </div>
       </section>
 
@@ -161,14 +111,51 @@ export default function PricingPage() {
   );
 }
 
-function Faq({ q, children }: { q: string; children: React.ReactNode }) {
+function PlanCard({
+  eyebrow,
+  plan,
+  points,
+  cta,
+  highlight,
+}: {
+  eyebrow: string;
+  plan: AccessPlan | undefined;
+  points: string[];
+  cta: { href: string; label: string };
+  highlight?: string;
+}) {
   return (
-    <details className="bg-white border border-ink/10 rounded-2xl p-5 group">
-      <summary className="font-medium cursor-pointer flex items-center justify-between">
-        {q}
-        <span className="text-deepteal text-xl group-open:rotate-45 transition">+</span>
-      </summary>
-      <p className="text-sm text-ink/75 mt-3 leading-relaxed">{children}</p>
-    </details>
+    <div className="bg-white border border-ink/10 rounded-3xl p-7 flex flex-col">
+      <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">{eyebrow}</div>
+      {plan ? (
+        <>
+          <div className="font-display text-5xl font-medium">
+            {dollars(plan.monthly_cents)}
+            <span className="text-base text-ink/50 font-sans">/month</span>
+          </div>
+          {plan.startup_fee_cents > 0 && (
+            <div className="text-sm text-ink/60 mt-1">+ {dollars(plan.startup_fee_cents)} one-time startup fee</div>
+          )}
+        </>
+      ) : (
+        <div className="font-display text-3xl font-medium">Membership</div>
+      )}
+      {highlight && (
+        <div className="mt-4 bg-butter/50 text-deepteal text-sm font-medium rounded-xl px-4 py-3">{highlight}</div>
+      )}
+      <ul className="space-y-2.5 text-sm mt-6 mb-8">
+        {points.map((t) => (
+          <li key={t} className="flex items-start gap-2">
+            <span className="text-deepteal mt-0.5">✓</span> {t}
+          </li>
+        ))}
+      </ul>
+      <Link
+        href={cta.href}
+        className="mt-auto block text-center bg-deepteal text-cream py-3.5 rounded-full text-sm font-medium hover:bg-inkdark transition"
+      >
+        {cta.label}
+      </Link>
+    </div>
   );
 }

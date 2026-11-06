@@ -50,7 +50,7 @@ export default function HowItWorksPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link href="/pricing" className="bg-deepteal text-cream px-5 py-3 rounded-full text-sm hover:bg-inkdark transition">See pricing</Link>
-            <Link href="/insurance-billing" className="bg-white border border-ink/15 px-5 py-3 rounded-full text-sm hover:bg-mist transition">Insurance &amp; billing</Link>
+            <Link href="/kindred-standard" className="bg-white border border-ink/15 px-5 py-3 rounded-full text-sm hover:bg-mist transition">The Kindred Standard</Link>
             <Link href="/contact" className="bg-white border border-ink/15 px-5 py-3 rounded-full text-sm hover:bg-mist transition">Contact us</Link>
           </div>
         </div>

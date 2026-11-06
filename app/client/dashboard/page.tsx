@@ -432,7 +432,7 @@ export default async function ClientDashboardPage() {
               <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-1">This month</div>
               <h2 className="font-display text-2xl lg:text-3xl font-medium">Billing</h2>
             </div>
-            <Link href="/client/billing" className="text-sm text-deepteal hover:text-coral transition">
+            <Link href="/client/membership" className="text-sm text-deepteal hover:text-coral transition">
               Details →
             </Link>
           </div>
@@ -447,7 +447,7 @@ export default async function ClientDashboardPage() {
               You'll only ever be charged for hours actually worked. Receipts show up here after each
               visit.
             </div>
-            <Link href="/client/billing" className="block mt-4 text-center bg-ink text-cream py-3 rounded-full text-sm hover:bg-coral transition">
+            <Link href="/client/membership" className="block mt-4 text-center bg-ink text-cream py-3 rounded-full text-sm hover:bg-coral transition">
               View billing
             </Link>
           </div>

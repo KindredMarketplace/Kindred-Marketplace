@@ -19,6 +19,7 @@ import { JobFilterChips } from '@/components/cna/JobFilterChips';
 import { JobApplyModal } from '@/components/cna/JobApplyModal';
 import { formatCents } from '@/lib/utils/money';
 import { initials, avatarClass } from '@/lib/utils/avatar';
+import { getMyAccess } from '@/lib/membership';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,28 +57,15 @@ export default async function CnaJobsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Real open jobs, newest first.
-  const { data: jobs } = await supabase
-    .from('jobs')
-    .select(
-      'id, client_id, title, description, schedule_type, hours_per_week, budget_min_cents, budget_max_cents, services_needed, zip, posted_at, status',
-    )
-    .in('status', ['open', 'in_review'])
-    .order('posted_at', { ascending: false, nullsFirst: false })
-    .limit(50);
-
-  const jobList = jobs ?? [];
-
-  // Posters' display info.
-  const clientIds = Array.from(new Set(jobList.map((j) => j.client_id)));
-  const posterMap = new Map<string, string>();
-  if (clientIds.length > 0) {
-    const { data: posters } = await supabase
-      .from('client_profiles')
-      .select('user_id, name')
-      .in('user_id', clientIds);
-    (posters ?? []).forEach((p) => posterMap.set(p.user_id, p.name));
-  }
+  // Real open jobs, newest first. Read through browse_open_jobs(), which
+  // withholds street addresses unless this caregiver is LISTED (meets the
+  // Kindred Standard + member). Families' names are never shown here.
+  const [{ data: jobs }, access] = await Promise.all([
+    supabase.rpc('browse_open_jobs'),
+    getMyAccess(supabase),
+  ]);
+  const jobList = (jobs ?? []).slice(0, 50);
+  const canApply = access?.is_listed === true;
 
   // This CNA's existing applications — so we can label "Applied ✓".
   const jobIds = jobList.map((j) => j.id);
@@ -107,7 +95,7 @@ export default async function CnaJobsPage() {
         </h1>
         <p className="text-ink/70 mt-2 max-w-2xl">
           {jobList.length > 0
-            ? 'Real jobs, posted by real families and facilities in your service area. Filters tighten what shows here.'
+            ? 'Real jobs, posted by real families. You set your rate and choose who you work with.'
             : 'No open jobs in your area right now. As families post jobs, they\u2019ll show up here in real time.'}
         </p>
 
@@ -131,6 +119,21 @@ export default async function CnaJobsPage() {
         </div>
 
         <JobFilterChips />
+
+        {!canApply && (
+          <div className="mt-6 bg-gradient-to-br from-mist/70 to-creamdark/70 border border-ink/10 rounded-2xl p-5 flex flex-col md:flex-row md:items-center gap-4 justify-between">
+            <div>
+              <div className="font-display text-lg font-medium">You&apos;re seeing the preview.</div>
+              <p className="text-sm text-ink/70 mt-1 max-w-xl">
+                These are real job posts. Exact addresses and applying open up once you meet the Kindred
+                Standard and your membership is active.
+              </p>
+            </div>
+            <Link href="/cna/membership" className="shrink-0 bg-deepteal text-cream px-5 py-2.5 rounded-full text-sm font-medium hover:bg-inkdark transition text-center">
+              See what&apos;s left →
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* MAIN CONTENT */}
@@ -213,7 +216,7 @@ export default async function CnaJobsPage() {
             </div>
           ) : (
             jobList.map((job) => {
-              const posterName = posterMap.get(job.client_id) ?? 'A family';
+              const posterName = 'A family';
               const posterFirst = posterName.split(' ')[0];
               const av = avatarClass(posterName);
               const isApplied = appliedSet.has(job.id);
@@ -249,16 +252,25 @@ export default async function CnaJobsPage() {
                           </span>
                         ))}
                         <span className="text-[10px] bg-coral/15 text-coral px-2.5 py-1 rounded-full border border-coral/30 font-medium">
-                          📍 {job.zip}
+                          📍 {job.city ? `${job.city} · ` : ''}{job.zip}
                         </span>
                       </div>
                       <div className="flex gap-2 mt-4 items-center">
-                        <JobApplyModal
-                          jobId={job.id}
-                          jobTitle={job.title}
-                          budgetHint={`${payRange(job.budget_min_cents, job.budget_max_cents)}/hr · ${SCHEDULE_LABEL[job.schedule_type] ?? job.schedule_type}`}
-                          alreadyApplied={isApplied}
-                        />
+                        {canApply || isApplied ? (
+                          <JobApplyModal
+                            jobId={job.id}
+                            jobTitle={job.title}
+                            budgetHint={`${payRange(job.budget_min_cents, job.budget_max_cents)}/hr · ${SCHEDULE_LABEL[job.schedule_type] ?? job.schedule_type}`}
+                            alreadyApplied={isApplied}
+                          />
+                        ) : (
+                          <Link
+                            href="/cna/membership"
+                            className="flex-1 text-xs py-2 bg-deepteal text-cream rounded-full text-center hover:bg-inkdark transition"
+                          >
+                            🔒 Unlock to apply
+                          </Link>
+                        )}
                         <Link
                           href={`/cna/jobs/${job.id}`}
                           className="flex-1 text-xs py-2 border border-ink/15 rounded-full hover:bg-mist transition text-center"

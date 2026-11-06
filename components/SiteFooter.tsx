@@ -15,15 +15,15 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
     links: [
       { label: 'Find care', href: '/browse' },
       { label: 'How it works', href: '/how-it-works' },
+      { label: 'The Kindred Standard', href: '/kindred-standard' },
       { label: 'Pricing', href: '/pricing' },
-      { label: 'Insurance & billing', href: '/insurance-billing' },
     ],
   },
   {
     heading: 'For Caregivers',
     links: [
       { label: 'Apply now', href: '/apply' },
-      { label: 'Training partners', href: '/training-partners' },
+      { label: 'The Kindred Standard', href: '/kindred-standard' },
       { label: 'Caregiver resources', href: '/caregiver-resources' },
       { label: 'Community', href: '/community' },
     ],
@@ -40,7 +40,13 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
   },
 ];
 
-export function SiteFooter() {
+export function SiteFooter(_props: {
+  contactHref?: string;
+  contactLabel?: string;
+  hipaaLabel?: string;
+  suffix?: string;
+  maxWidth?: string;
+} = {}) {
   return (
     <footer className="bg-inkdark text-cream/80 pt-20 pb-8">
       <div className="max-w-[1400px] mx-auto px-6">
@@ -52,8 +58,8 @@ export function SiteFooter() {
               <span className="font-display text-2xl text-cream font-medium">Kindred</span>
             </Link>
             <p className="text-sm leading-relaxed mb-6 max-w-xs">
-              Care that feels like family. Connecting Florida families with vetted, independent
-              CNAs.
+              A better way to connect. Families and independent home caregivers, directly, with
+              no agency in the middle.
             </p>
             <div className="flex gap-3">
               {['in', 'f', 'ig'].map((s) => (

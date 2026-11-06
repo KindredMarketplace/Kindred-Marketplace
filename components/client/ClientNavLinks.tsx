@@ -20,7 +20,7 @@ const LINKS = [
   { href: '/client/my-care', label: 'My care' },
   { href: '/client/messages', label: 'Messages' },
   { href: '/client/profile', label: 'My profile' },
-  { href: '/client/billing', label: 'Billing' },
+  { href: '/client/membership', label: 'Membership' },
   { href: '/client/help', label: 'Help' },
 ];
 

@@ -10,8 +10,10 @@
  * availability, and verification chips are shown for parity with the design and
  * become exact as that data fills in — they never fabricate exclusions.
  *
- * You can browse everything without an account. Messaging or booking is the
- * only thing gated behind login (the profile modal makes that the ask).
+ * LOCKED PREVIEW (Nov 2026): rows come from the browse_caregivers() RPC,
+ * which withholds full names and photos unless the viewer is a member family
+ * (identity_unlocked). This component never sees data it shouldn't show.
+ * Every caregiver here meets the Kindred Standard, so those badges are earned.
  */
 
 import { useMemo, useState } from 'react';
@@ -25,11 +27,19 @@ export type Caregiver = {
   bio: string | null;
   hourly_rate_cents: number | null;
   years_experience: number | null;
+  experience_hours: number | null;
   service_zip: string | null;
   languages: string[] | null;
   gender: string | null;
   availability_status: string | null;
+  services: string[];
+  identity_unlocked: boolean;
 };
+
+/** Who is looking, which decides the call to action. */
+export type Viewer = 'anon' | 'family' | 'family_member' | 'caregiver' | 'admin';
+
+const STANDARD_BADGES = ['L2 background ✓', 'ID verified ✓', 'Insured ✓'];
 
 const GENDERS: [string, string][] = [
   ['any', 'Any'],
@@ -39,17 +49,22 @@ const GENDERS: [string, string][] = [
 ];
 const SPECIALTIES = ['Dementia', "Parkinson's", 'Hospice', 'Mobility', 'Med Aide', 'Post-surgical'];
 const AVAILABILITY = ['Days', 'Evenings', 'Overnights', 'Weekends', 'Live-in'];
-const VERIFICATIONS = ['L2 background', 'Insured', 'CPR/BLS current', 'ID-verified', 'References checked'];
+const VERIFICATIONS = ['L2 background', 'Insured', 'ID-verified', '1,500+ hours'];
 const AV = ['av-1', 'av-7', 'av-3', 'av-4', 'av-2', 'av-8', 'av-6', 'av-5'];
 
 function initials(c: Caregiver) {
   return `${(c.display_name ?? 'K').charAt(0)}${(c.last_name ?? '').charAt(0)}`.toUpperCase();
 }
 function displayName(c: Caregiver) {
+  if (!c.identity_unlocked) return `${(c.display_name ?? 'K').charAt(0).toUpperCase()}.`;
   return `${c.display_name ?? 'Caregiver'}${c.last_name ? ` ${c.last_name.charAt(0)}.` : ''}`;
 }
+function hoursLabel(h: number | null) {
+  if (h == null) return null;
+  return `${h.toLocaleString('en-US')}+ hrs`;
+}
 
-export function BrowseClient({ caregivers }: { caregivers: Caregiver[] }) {
+export function BrowseClient({ caregivers, viewer = 'anon' }: { caregivers: Caregiver[]; viewer?: Viewer }) {
   const [search, setSearch] = useState('');
   const [maxRate, setMaxRate] = useState(80);
   const [distance, setDistance] = useState(25);
@@ -84,7 +99,7 @@ export function BrowseClient({ caregivers }: { caregivers: Caregiver[] }) {
 
   const results = useMemo(() => {
     let list = caregivers.filter((c) => {
-      const text = `${c.display_name ?? ''} ${c.last_name ?? ''} ${c.headline ?? ''} ${c.bio ?? ''}`.toLowerCase();
+      const text = `${c.display_name ?? ''} ${c.last_name ?? ''} ${c.headline ?? ''} ${c.bio ?? ''} ${(c.services ?? []).join(' ')}`.toLowerCase();
       if (search.trim() && !text.includes(search.trim().toLowerCase())) return false;
       const rate = c.hourly_rate_cents != null ? c.hourly_rate_cents / 100 : null;
       if (rate != null && rate > maxRate) return false;
@@ -244,15 +259,21 @@ export function BrowseClient({ caregivers }: { caregivers: Caregiver[] }) {
                     <div className="flex-1 min-w-0">
                       <div className="font-display text-lg font-medium leading-tight">{displayName(c)}</div>
                       <div className="text-xs text-ink/60 font-mono">
-                        CNA{c.years_experience ? ` · ${c.years_experience} yrs` : ''}{c.service_zip ? ` · ${c.service_zip}` : ''}
+                        {c.years_experience ? `${c.years_experience} yrs` : 'Caregiver'}
+                        {c.experience_hours ? ` · ${hoursLabel(c.experience_hours)}` : ''}
+                        {c.service_zip ? ` · ${c.service_zip}` : ''}
                       </div>
-                      <div className="mt-1.5 text-xs text-deepteal font-medium">✓ Vetted &amp; new to Kindred</div>
+                      <div className="mt-1.5 text-xs text-deepteal font-medium">✓ Meets the Kindred Standard</div>
+                      {!c.identity_unlocked && (
+                        <div className="mt-1 text-[11px] text-ink/50">🔒 Name &amp; photo unlock with membership</div>
+                      )}
                     </div>
                   </div>
                   {c.headline && <p className="text-sm text-ink/75 leading-relaxed mb-3 italic font-display">&ldquo;{c.headline}&rdquo;</p>}
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-deepteal/10 text-deepteal">L2 BG ✓</span>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-deepteal/10 text-deepteal">CPR ✓</span>
+                    {STANDARD_BADGES.map((b) => (
+                      <span key={b} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-deepteal/10 text-deepteal">{b}</span>
+                    ))}
                     {c.languages?.slice(0, 2).map((l) => (
                       <span key={l} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-sky/15 text-deepteal">{l}</span>
                     ))}
@@ -276,10 +297,10 @@ export function BrowseClient({ caregivers }: { caregivers: Caregiver[] }) {
           <div className="mt-12 bg-gradient-to-br from-mist/60 to-creamdark/60 border border-ink/10 rounded-3xl p-6 lg:p-8 text-center">
             <h3 className="font-display text-2xl font-medium mb-1">Don&apos;t see the right fit?</h3>
             <p className="text-sm text-ink/70 max-w-xl mx-auto mb-4">
-              Create a free account to post a job — qualified caregivers will reach out to you directly.
+              Members can post what they need, and listed caregivers near you can reach out directly.
             </p>
-            <Link href="/signup" className="inline-flex bg-coral text-cream px-6 py-3 rounded-full text-sm hover:bg-inkdark transition">
-              Sign up free →
+            <Link href={viewer === 'anon' ? '/signup?role=client' : '/client/membership'} className="inline-flex bg-coral text-cream px-6 py-3 rounded-full text-sm hover:bg-inkdark transition">
+              {viewer === 'anon' ? 'Create a family account →' : 'See membership →'}
             </Link>
           </div>
         </div>
@@ -306,15 +327,39 @@ export function BrowseClient({ caregivers }: { caregivers: Caregiver[] }) {
               </div>
               <div className="flex items-center gap-2 mt-3 flex-wrap">
                 <h2 className="font-display text-3xl font-medium">{displayName(selected)}</h2>
-                <span className="bg-sage/20 text-deepteal px-2 py-0.5 rounded-full text-xs font-medium">✓ Vetted</span>
+                <span className="bg-sage/20 text-deepteal px-2 py-0.5 rounded-full text-xs font-medium">✓ Kindred Standard</span>
               </div>
               <div className="text-ink/70 text-sm mt-1">
-                CNA{selected.years_experience ? ` · ${selected.years_experience} yrs experience` : ''}{selected.service_zip ? ` · ${selected.service_zip}` : ''}
+                {selected.years_experience ? `${selected.years_experience} yrs experience` : 'Caregiver'}
+                {selected.experience_hours ? ` · ${hoursLabel(selected.experience_hours)} hands-on` : ''}
+                {selected.service_zip ? ` · ${selected.service_zip}` : ''}
               </div>
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {STANDARD_BADGES.map((b) => (
+                  <span key={b} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-deepteal/10 text-deepteal">{b}</span>
+                ))}
+              </div>
+              {!selected.identity_unlocked && (
+                <div className="mt-4 bg-white border border-ink/10 rounded-xl p-3 text-xs text-ink/70 leading-relaxed">
+                  🔒 To protect caregivers, full names, photos and messaging open up once you&apos;re a member.
+                  Everything else you see here is real.
+                </div>
+              )}
 
               {selected.bio && <p className="text-ink/80 leading-relaxed mt-5">{selected.bio}</p>}
               {selected.headline && (
                 <div className="mt-4 bg-mist/60 rounded-xl p-4 italic font-display text-deepteal">&ldquo;{selected.headline}&rdquo;</div>
+              )}
+
+              {selected.services && selected.services.length > 0 && (
+                <div className="mt-5">
+                  <div className="text-xs font-mono uppercase tracking-widest text-ink/60 mb-2">Services</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selected.services.map((l) => (
+                      <span key={l} className="bg-white border border-ink/15 px-2.5 py-1 rounded-full text-xs">{l}</span>
+                    ))}
+                  </div>
+                </div>
               )}
 
               {selected.languages && selected.languages.length > 0 && (
@@ -334,17 +379,43 @@ export function BrowseClient({ caregivers }: { caregivers: Caregiver[] }) {
                     <div className="font-display text-2xl font-medium">${(selected.hourly_rate_cents / 100).toFixed(0)}<span className="text-sm text-ink/50 font-sans">/hr</span></div>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <Link href="/login" className="border border-ink/20 px-4 py-2.5 rounded-full text-sm hover:bg-ink hover:text-cream transition">Log in to message</Link>
-                  <Link href="/signup" className="bg-deepteal text-cream px-4 py-2.5 rounded-full text-sm font-medium hover:bg-inkdark transition">Sign up to book</Link>
-                </div>
+                <ModalActions viewer={viewer} />
               </div>
-              <p className="text-center text-xs text-ink/45 mt-4">Browsing is free — you only need an account to message or book.</p>
+              <p className="text-center text-xs text-ink/45 mt-4">
+                Browsing is free. You pay the caregiver directly; Kindred never takes a cut of their rate.
+              </p>
             </div>
           </div>
         </div>
       )}
     </>
+  );
+}
+
+function ModalActions({ viewer }: { viewer: Viewer }) {
+  const base = 'px-4 py-2.5 rounded-full text-sm transition';
+  if (viewer === 'family_member' || viewer === 'admin') {
+    return (
+      <Link href="/client/browse" className={`${base} bg-deepteal text-cream font-medium hover:bg-inkdark`}>
+        Message from your portal →
+      </Link>
+    );
+  }
+  if (viewer === 'family') {
+    return (
+      <Link href="/client/membership" className={`${base} bg-deepteal text-cream font-medium hover:bg-inkdark`}>
+        Unlock with membership
+      </Link>
+    );
+  }
+  if (viewer === 'caregiver') {
+    return <span className="text-xs text-ink/50 max-w-[12rem] text-right">You&apos;re signed in as a caregiver.</span>;
+  }
+  return (
+    <div className="flex gap-2">
+      <Link href="/login?next=/client/membership" className={`${base} border border-ink/20 hover:bg-ink hover:text-cream`}>Log in</Link>
+      <Link href="/signup?role=client" className={`${base} bg-deepteal text-cream font-medium hover:bg-inkdark`}>Join to message</Link>
+    </div>
   );
 }
 

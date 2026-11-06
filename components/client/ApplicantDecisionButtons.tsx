@@ -44,11 +44,11 @@ export function ApplicantDecisionButtons({
       const res =
         kind === 'accept' ? await acceptApplicantAction(fd) : await declineApplicantAction(fd);
       if (!res.ok) {
-        setError(res.error);
+        setError(String(res.error));
       } else {
         setFinalStatus(kind === 'accept' ? 'accepted' : 'rejected');
         if (kind === 'accept' && 'thread_id' in res) {
-          setThreadId(res.thread_id);
+          setThreadId(String(res.thread_id));
         }
       }
     });

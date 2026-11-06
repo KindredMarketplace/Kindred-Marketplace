@@ -71,7 +71,7 @@ const SignupSchema = z.object({
     .min(8, 'Password must be at least 8 characters.')
     .max(72, 'Password is too long.'),
   full_name: z.string().min(1, 'Please enter your name.').max(120),
-  role: z.enum(['client', 'cna', 'business'], {
+  role: z.enum(['client', 'cna'], {
     errorMap: () => ({ message: 'Please choose what kind of account you want.' }),
   }),
 });
@@ -135,13 +135,19 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
 
   revalidatePath('/', 'layout');
 
+  // Honour ?next= (e.g. "Log in" from a locked-preview CTA), but only for a
+  // same-site path inside the portal this user is allowed into.
+  const next = formData.get('next')?.toString() ?? '';
+  const portal = profile?.role === 'cna' ? '/cna/' : profile?.role === 'client' ? '/client/' : null;
+  if (portal && next.startsWith(portal) && !next.startsWith('//') && !next.includes('..')) {
+    redirect(next);
+  }
+
   switch (profile?.role) {
     case 'admin':
       redirect('/admin');
     case 'cna':
       redirect('/cna/dashboard');
-    case 'business':
-      redirect('/business/dashboard');
     case 'client':
     default:
       redirect('/client/dashboard');
@@ -246,8 +252,6 @@ export async function signupAction(formData: FormData): Promise<SignupResult> {
   switch (parsed.data.role) {
     case 'cna':
       redirect('/cna/dashboard');
-    case 'business':
-      redirect('/business/dashboard');
     case 'client':
     default:
       // New clients go through the care-setup flow first.

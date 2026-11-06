@@ -66,8 +66,8 @@ export function ClientProfileMenu({
           <Link href="/client/my-care" className="block px-4 py-2 text-sm hover:bg-mist transition">
             My care plan
           </Link>
-          <Link href="/client/billing" className="block px-4 py-2 text-sm hover:bg-mist transition">
-            Billing &amp; receipts
+          <Link href="/client/membership" className="block px-4 py-2 text-sm hover:bg-mist transition">
+            Membership
           </Link>
           <div className="border-t border-ink/10 my-1" />
           <form action={logoutAction}>

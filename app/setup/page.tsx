@@ -30,7 +30,7 @@ export default async function SetupPage() {
   // Only clients run this flow. Send other roles to their dashboards.
   const { data: profileRole } = await supabase.from('users').select('role').eq('id', user.id).single();
   if (profileRole?.role === 'cna') redirect('/cna/dashboard');
-  if (profileRole?.role === 'business') redirect('/business/dashboard');
+  if (profileRole?.role === 'business') redirect('/');
   if (profileRole?.role === 'admin') redirect('/admin');
 
   const [taxRes, profileRes, recipientRes] = await Promise.all([

@@ -1,5 +1,7 @@
 'use server';
 
+import type { TablesInsert, TablesUpdate } from '@/types/database.types';
+
 /**
  * Server actions for the client care-setup flow + profile editing.
  *
@@ -132,7 +134,7 @@ export async function saveCareProfileAction(formData: FormData): Promise<SaveRes
 
   const { error: profileError } = await supabase
     .from('client_profiles')
-    .upsert(profilePayload, { onConflict: 'user_id' });
+    .upsert(profilePayload as TablesInsert<'client_profiles'>, { onConflict: 'user_id' });
   if (profileError) {
     return { ok: false, error: `Couldn\u2019t save your details: ${profileError.message}` };
   }
@@ -178,7 +180,7 @@ export async function saveCareProfileAction(formData: FormData): Promise<SaveRes
     if (hasRecipientData) {
       const { error } = await supabase
         .from('care_recipients')
-        .update(recipientFields)
+        .update(recipientFields as TablesUpdate<'care_recipients'>)
         .eq('id', existingRecipient.id);
       if (error) return { ok: false, error: `Couldn\u2019t save care details: ${error.message}` };
     }

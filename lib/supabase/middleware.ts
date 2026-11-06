@@ -8,7 +8,6 @@
  *   2. Enforce role-based route access:
  *        - /client/*     → clients (and admins-impersonating-clients) only
  *        - /cna/*        → CNAs (and admins-impersonating-CNAs) only
- *        - /business/*   → businesses (and admins-impersonating-businesses) only
  *        - /admin/*      → admins only
  *
  * Admin impersonation: when an admin starts "view as," we set the cookie
@@ -16,7 +15,7 @@
  * that cookie is set, the admin is treated as that role for routing purposes.
  */
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@/types/database.types';
 
@@ -34,13 +33,9 @@ const PUBLIC_ROUTES = [
   '/terms',
   '/privacy',
   '/hipaa',
-  '/for-business',
-  '/become-a-cna',
-  '/insurance-billing',
   '/careers',
   '/press',
   '/trust-safety',
-  '/training-partners',
   '/caregiver-resources',
   '/community',
   '/stories',
@@ -48,6 +43,9 @@ const PUBLIC_ROUTES = [
   '/browse',
   '/find-care',
   '/apply',
+  '/kindred-standard',
+  '/offline',
+  '/manifest.webmanifest',
   '/post-job',
   '/auth/callback',
 ];
@@ -56,8 +54,8 @@ function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.includes(pathname)) return true;
   // Sub-paths of public marketing routes
   if (pathname.startsWith('/caregiver/')) return true; // public caregiver profiles
-  if (pathname.startsWith('/become-a-cna/')) return true;
   if (pathname.startsWith('/api/health')) return true;
+  if (pathname.startsWith('/api/stripe/webhook')) return true;
   return false;
 }
 
@@ -68,8 +66,6 @@ function pathnameRequiresRole(pathname: string): EffectiveRole | null {
   if (pathname.startsWith('/client')) return 'client';
   if (pathname.startsWith('/cna/')) return 'cna';
   if (pathname === '/cna') return 'cna';
-  if (pathname.startsWith('/business/')) return 'business';
-  if (pathname === '/business') return 'business';
   return null;
 }
 
@@ -81,18 +77,15 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options });
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
-          supabaseResponse.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: '', ...options });
-          supabaseResponse = NextResponse.next({ request });
-          supabaseResponse.cookies.set({ name, value: '', ...options });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
         },
       },
     }
@@ -170,7 +163,7 @@ async function getEffectiveRole(
   // Only admins can impersonate. Anyone else's cookie is ignored.
   if (realRole === 'admin') {
     const impersonating = request.cookies.get('kindred_impersonating_role')?.value;
-    if (impersonating === 'client' || impersonating === 'cna' || impersonating === 'business') {
+    if (impersonating === 'client' || impersonating === 'cna') {
       return impersonating;
     }
   }
@@ -184,8 +177,6 @@ function roleHomePath(role: EffectiveRole): string {
       return '/admin';
     case 'cna':
       return '/cna/dashboard';
-    case 'business':
-      return '/business/dashboard';
     case 'client':
     default:
       return '/client/dashboard';

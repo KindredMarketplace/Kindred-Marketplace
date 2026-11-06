@@ -16,6 +16,7 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getMyAccess } from '@/lib/membership';
 import { formatCents } from '@/lib/utils/money';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { JobApplyModal } from '@/components/cna/JobApplyModal';
@@ -55,23 +56,49 @@ export default async function CnaJobDetailPage({ params }: { params: Promise<{ i
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: job } = await supabase
-    .from('jobs')
-    .select(
-      'id, client_id, title, description, schedule_type, hours_per_week, budget_min_cents, budget_max_cents, services_needed, zip, status, posted_at, start_date',
-    )
-    .eq('id', id)
-    .maybeSingle();
+  // Listed caregivers (and anyone who already applied) can read the job row
+  // directly. Everyone else gets the locked-preview version from
+  // browse_open_jobs(): same post, no street address, can't apply yet.
+  const [{ data: direct }, access] = await Promise.all([
+    supabase
+      .from('jobs')
+      .select(
+        'id, client_id, title, description, schedule_type, hours_per_week, budget_min_cents, budget_max_cents, services_needed, zip, status, posted_at, start_date',
+      )
+      .eq('id', id)
+      .maybeSingle(),
+    getMyAccess(supabase),
+  ]);
+
+  let job: (typeof direct & {}) | null = direct;
+  if (!job) {
+    const { data: previewRows } = await supabase.rpc('browse_open_jobs');
+    const p = (previewRows ?? []).find((r) => r.id === id);
+    if (p) {
+      job = {
+        id: p.id,
+        client_id: '',
+        title: p.title,
+        description: p.description ?? '',
+        schedule_type: p.schedule_type,
+        hours_per_week: p.hours_per_week,
+        budget_min_cents: p.budget_min_cents,
+        budget_max_cents: p.budget_max_cents,
+        services_needed: p.services_needed ?? [],
+        zip: p.zip ?? '',
+        status: p.status,
+        posted_at: p.posted_at,
+        start_date: p.start_date,
+      } as NonNullable<typeof direct>;
+    }
+  }
 
   if (!job) notFound();
+  const isListed = access?.is_listed === true;
 
-  // Family poster info (first name only — we never reveal full identity until hired).
-  const { data: poster } = await supabase
-    .from('client_profiles')
-    .select('name')
-    .eq('user_id', job.client_id)
-    .maybeSingle();
-  const posterFirst = (poster?.name ?? 'A family').split(' ')[0];
+  // Families' names are private (client_profiles is owner-only), so posts
+  // always read "A family" until there's a hire.
+  const posterFirst = 'A family';
 
   // This CNA's application against this job, if any.
   const { data: myApp } = await supabase
@@ -83,18 +110,19 @@ export default async function CnaJobDetailPage({ params }: { params: Promise<{ i
 
   const isAccepted = myApp?.status === 'accepted';
   const hasActiveApp = myApp && myApp.status !== 'rejected' && myApp.status !== 'withdrawn';
-  const canApply = !myApp && (job.status === 'open' || job.status === 'in_review');
+  const canApply = isListed && !myApp && (job.status === 'open' || job.status === 'in_review');
+  const lockedPreview = !isListed && !myApp && (job.status === 'open' || job.status === 'in_review');
 
   // If hired, look up the message thread so the "Message [family]" button
   // can deep-link to it. acceptApplicantAction creates/promotes the thread
   // as part of the hire, so it should exist by the time the CNA sees this.
   let hireThreadId: string | null = null;
-  if (isAccepted) {
+  if (isAccepted && job.client_id) {
     const t = await findThreadBetween(supabase, user.id, job.client_id);
     hireThreadId = t?.id ?? null;
   }
 
-  const av = avatarClass(poster?.name ?? 'family');
+  const av = avatarClass('family');
 
   return (
     <main className="max-w-[1000px] mx-auto px-6 py-10 lg:py-12">
@@ -108,7 +136,7 @@ export default async function CnaJobDetailPage({ params }: { params: Promise<{ i
           <div
             className={`w-16 h-16 rounded-2xl ${av} flex items-center justify-center text-cream font-display text-xl font-medium flex-shrink-0`}
           >
-            {initials(poster?.name ?? 'F')}
+            {initials('Family')}
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-1">Posted by {posterFirst}</div>
@@ -228,6 +256,21 @@ export default async function CnaJobDetailPage({ params }: { params: Promise<{ i
               buttonClassName="inline-block bg-cream text-deepteal px-6 py-3 rounded-full text-sm font-medium hover:bg-cream/90 transition"
               buttonLabel="Express interest →"
             />
+          </div>
+        ) : lockedPreview ? (
+          <div className="bg-gradient-to-br from-mist/70 to-creamdark/70 border border-ink/10 rounded-3xl p-6 lg:p-7">
+            <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">Preview</div>
+            <div className="font-display text-2xl font-medium mb-2">Applying opens once you&apos;re listed.</div>
+            <p className="text-sm text-ink/70 leading-relaxed max-w-xl mb-5">
+              This is a real job post. To apply you need to meet the Kindred Standard and have an active
+              membership. Founding caregivers get their first year free.
+            </p>
+            <Link
+              href="/cna/membership"
+              className="inline-block bg-deepteal text-cream px-6 py-3 rounded-full text-sm font-medium hover:bg-inkdark transition"
+            >
+              See what&apos;s left →
+            </Link>
           </div>
         ) : (
           // Job not open

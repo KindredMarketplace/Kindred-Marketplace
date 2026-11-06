@@ -20,6 +20,7 @@ const LINKS = [
   { href: '/cna/schedule', label: 'My schedule' },
   { href: '/cna/earnings', label: 'Earnings' },
   { href: '/cna/messages', label: 'Messages' },
+  { href: '/cna/membership', label: 'Membership' },
 ];
 
 export function CnaNavLinks({ unreadCount = 0 }: { unreadCount?: number }) {

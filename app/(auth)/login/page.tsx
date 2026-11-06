@@ -5,13 +5,22 @@
  * Username + password. Server reads role and routes to the right dashboard.
  */
 
-import { useState, useTransition } from 'react';
+import { Suspense, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { KindredMark } from '@/components/KindredMark';
 import { loginAction, type LoginResult } from '../actions';
 
 export default function LoginPage() {
+  // useSearchParams() needs a Suspense boundary so /login can be prerendered.
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-cream" />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const searchParams = useSearchParams();
   const justCreated = searchParams.get('created') === '1';
 
@@ -58,6 +67,7 @@ export default function LoginPage() {
           )}
 
           <form action={handleSubmit} className="space-y-4">
+            <input type="hidden" name="next" value={searchParams.get('next') ?? ''} />
             <div>
               <label htmlFor="username" className="block text-sm font-medium mb-1.5">
                 Username or email

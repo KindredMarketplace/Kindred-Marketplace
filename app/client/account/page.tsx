@@ -73,7 +73,7 @@ export default async function ClientAccountPage() {
             <a href="#privacy" className="settings-nav-item relative block px-5 py-3 text-sm border-b border-ink/5">Privacy &amp; data</a>
             <a href="#security" className="settings-nav-item relative block px-5 py-3 text-sm border-b border-ink/5">Security &amp; sign-in</a>
             <a href="#family" className="settings-nav-item relative block px-5 py-3 text-sm border-b border-ink/5">Family access</a>
-            <Link href="/client/billing" className="settings-nav-item relative block px-5 py-3 text-sm border-b border-ink/5">Payment methods</Link>
+            <Link href="/client/membership" className="settings-nav-item relative block px-5 py-3 text-sm border-b border-ink/5">Payment methods</Link>
             <Link href="/client/profile" className="settings-nav-item relative block px-5 py-3 text-sm border-b border-ink/5">Care profile →</Link>
             <a href="#danger" className="settings-nav-item relative block px-5 py-3 text-sm text-coral">Pause or close</a>
           </nav>

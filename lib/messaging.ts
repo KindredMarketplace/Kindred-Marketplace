@@ -15,6 +15,7 @@
  * through helpers here so the rest of the app doesn't have to think about it.
  */
 
+import type { TablesInsert } from '@/types/database.types';
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database.types';
@@ -118,7 +119,7 @@ export async function getOrCreateThread(
 
   const { data: inserted, error } = await supabase
     .from('message_threads')
-    .insert(insertPayload)
+    .insert(insertPayload as TablesInsert<'message_threads'>)
     .select('id')
     .single();
 

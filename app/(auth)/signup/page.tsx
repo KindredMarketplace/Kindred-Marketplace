@@ -11,7 +11,7 @@
  * Step 2: Username + full name + password. No email required for now.
  */
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { KindredMark } from '@/components/KindredMark';
@@ -39,19 +39,11 @@ const ROLE_OPTIONS: Array<{
   {
     value: 'cna',
     icon: '🩺',
-    title: 'I\'m a caregiver (CNA)',
-    description: 'For Certified Nursing Assistants. Start your application.',
+    title: 'I\'m a caregiver',
+    description: 'For experienced CNAs, home health aides and nurses. Start your application.',
     available: true,
     unavailableNote: '',
     redirectTo: '/apply',
-  },
-  {
-    value: 'business',
-    icon: '🏢',
-    title: 'I represent a facility',
-    description: 'For assisted living homes, agencies, and healthcare facilities.',
-    available: false,
-    unavailableNote: 'Facility accounts are coming after our consumer launch. If you run a facility and want early access, reach out through our Contact page and we\'ll add you to the list.',
   },
 ];
 
@@ -62,6 +54,19 @@ export default function SignupPage() {
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<SignupResult | null>(null);
   const router = useRouter();
+
+  // /signup?role=client (from "Join to message" CTAs) skips the role picker.
+  useEffect(() => {
+    try {
+      const preset = new URLSearchParams(window.location.search).get('role');
+      if (preset === 'client') {
+        setRole('client');
+        setStep('fill-form');
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   async function handleSubmit(formData: FormData) {
     setResult(null);
@@ -113,7 +118,7 @@ export default function SignupPage() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto">
               {ROLE_OPTIONS.map((opt) => (
                 <div key={opt.value} className="flex flex-col gap-0">
                   <button

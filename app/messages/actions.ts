@@ -21,6 +21,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { getMyAccess } from '@/lib/membership';
 import { getOrCreateThread } from '@/lib/messaging';
 
 // ---------------------------------------------------------------------------
@@ -72,6 +73,25 @@ export async function startMessageThreadAction(formData: FormData): Promise<Star
       ok: false,
       error: 'Only families can start a new conversation. Caregivers reply after a family reaches out.',
     };
+  }
+
+  // Membership gate (locked preview). The database enforces this too
+  // (message_threads insert policy); this check just gives a clear message.
+  // Families who are already connected to this caregiver (e.g. via a job
+  // application) can always talk.
+  const access = await getMyAccess(supabase);
+  if (!access?.is_member) {
+    const { data: visible } = await supabase
+      .from('cna_profiles')
+      .select('user_id')
+      .eq('user_id', parsed.data.cna_id)
+      .maybeSingle();
+    if (!visible) {
+      return {
+        ok: false,
+        error: 'Messaging caregivers opens with a Kindred membership. See Membership in your menu.',
+      };
+    }
   }
 
   // Confirm the recipient is actually a CNA.

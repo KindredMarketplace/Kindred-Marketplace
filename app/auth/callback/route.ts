@@ -37,7 +37,7 @@ export async function GET(request: Request) {
           case 'cna':
             return NextResponse.redirect(`${origin}/cna/dashboard`);
           case 'business':
-            return NextResponse.redirect(`${origin}/business/dashboard`);
+            return NextResponse.redirect(`${origin}/`);
           case 'admin':
             return NextResponse.redirect(`${origin}/admin`);
           case 'client':
