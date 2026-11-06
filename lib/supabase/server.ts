@@ -9,6 +9,9 @@
  * Like the browser client, this respects Row Level Security. For privileged
  * operations that need to bypass RLS (rare — Stripe webhooks, admin scripts),
  * use createServiceClient() below.
+ *
+ * NOTE: createClient() is async in Next.js 15+, because cookies() is async.
+ * Always `await createClient()` at the call site.
  */
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
@@ -16,8 +19,8 @@ import { cookies } from 'next/headers';
 import { createClient as createPlainClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database.types';
 
-export function createClient() {
-  const cookieStore = cookies();
+export async function createClient() {
+  const cookieStore = await cookies();
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

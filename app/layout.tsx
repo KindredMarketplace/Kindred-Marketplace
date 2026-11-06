@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
-import { Inter, Fraunces } from 'next/font/google';
+import { Inter, Fraunces, JetBrains_Mono } from 'next/font/google';
+import { Suspense } from 'react';
 import './globals.css';
+import ImpersonationBanner from '@/components/ImpersonationBanner';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -13,6 +15,13 @@ const fraunces = Fraunces({
   variable: '--font-fraunces',
   display: 'swap',
   weight: ['400', '500', '600', '700'],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains-mono',
+  display: 'swap',
+  weight: ['400', '500'],
 });
 
 export const metadata: Metadata = {
@@ -32,8 +41,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
-      <body className="bg-cream text-stone-900 antialiased">{children}</body>
+    <html
+      lang="en"
+      className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}
+    >
+      <body className="bg-cream text-ink antialiased">
+        {/* Sticky banner — only renders when an admin is impersonating someone */}
+        <Suspense fallback={null}>
+          <ImpersonationBanner />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }
