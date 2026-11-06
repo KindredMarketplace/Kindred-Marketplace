@@ -22,7 +22,7 @@ export function SiteHeader() {
             <span className="font-mono">📍 Gainesville, FL</span>
             <span className="opacity-50 hidden md:inline">·</span>
             <span className="hidden md:inline opacity-80">
-              Now serving Alachua, Marion &amp; Putnam counties
+              Launching in Gainesville, Florida
             </span>
           </div>
           <div className="flex items-center gap-5">

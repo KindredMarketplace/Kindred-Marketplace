@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { updateApplicationAction } from '../actions';
+import { setVerificationAction, setExperienceHoursAction, compMembershipAction } from '../standard-actions';
 import { STAGE_LABEL, STAGE_DOT, STAGE_BLURB, relTime, type AppStage } from '../stages';
 
 export const dynamic = 'force-dynamic';
@@ -59,6 +60,15 @@ export default async function ApplicantDetailPage({
     .select('full_name, email, phone, status, created_at')
     .eq('id', id)
     .single();
+
+  const [{ data: verifs }, { data: membership }] = await Promise.all([
+    supabase.from('cna_verifications').select('type, status, expires_at').eq('cna_id', id),
+    supabase
+      .from('memberships')
+      .select('status, founding, current_period_end, comp_reason, stripe_subscription_id')
+      .eq('user_id', id)
+      .maybeSingle(),
+  ]);
 
   const { data: docs } = await supabase
     .from('documents')
@@ -228,6 +238,14 @@ export default async function ApplicantDetailPage({
           {/* RIGHT: the controls */}
           <aside className="space-y-4 lg:sticky lg:top-6">
             <StageControls id={id} stage={stage} interviewAt={p.interview_at} />
+
+            <StandardPanel
+              id={id}
+              approved={stage === 'approved'}
+              hours={p.experience_hours ?? null}
+              verifs={verifs ?? []}
+              membership={membership ?? null}
+            />
 
             {/* Private notes */}
             <section className="rounded-2xl border border-stone-200 bg-white p-5">
@@ -409,4 +427,146 @@ function toLocalInput(iso: string | null): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Kindred Standard + membership panel
+ * ------------------------------------------------------------------------- */
+
+const STANDARD_DOCS: { type: 'l2bg' | 'identity' | 'insurance'; label: string; needsExpiry: boolean }[] = [
+  { type: 'l2bg', label: 'Level 2 background', needsExpiry: true },
+  { type: 'identity', label: 'ID verified', needsExpiry: false },
+  { type: 'insurance', label: 'Liability insurance', needsExpiry: true },
+];
+
+function StandardPanel({
+  id,
+  approved,
+  hours,
+  verifs,
+  membership,
+}: {
+  id: string;
+  approved: boolean;
+  hours: number | null;
+  verifs: { type: string; status: string; expires_at: string | null }[];
+  membership: {
+    status: string;
+    founding: boolean;
+    current_period_end: string | null;
+    comp_reason: string | null;
+    stripe_subscription_id: string | null;
+  } | null;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const docOk = (t: string) =>
+    verifs.some((v) => v.type === t && v.status === 'verified' && (!v.expires_at || v.expires_at >= today));
+  const hoursOk = (hours ?? 0) >= 1500;
+  const memberOk =
+    !!membership &&
+    (membership.status === 'active' || membership.status === 'comped') &&
+    (!membership.current_period_end || membership.current_period_end > new Date().toISOString());
+  const listed = approved && hoursOk && STANDARD_DOCS.every((d) => docOk(d.type)) && memberOk;
+
+  return (
+    <section className="rounded-2xl border border-stone-200 bg-white p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-medium text-stone-800 text-sm">Kindred Standard</h3>
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${listed ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-500'}`}
+        >
+          {listed ? 'Listed: families can see them' : 'Not listed'}
+        </span>
+      </div>
+
+      <ul className="text-xs text-stone-600 space-y-1">
+        <li>{approved ? '✅' : '⬜'} Interview passed (stage = Approved)</li>
+        <li>{hoursOk ? '✅' : '⬜'} 1,500+ hours ({hours ?? 'not recorded'})</li>
+        {STANDARD_DOCS.map((d) => (
+          <li key={d.type}>
+            {docOk(d.type) ? '✅' : '⬜'} {d.label}
+          </li>
+        ))}
+        <li>
+          {memberOk ? '✅' : '⬜'} Membership{' '}
+          {membership
+            ? `(${membership.founding ? 'founding, ' : ''}${membership.status}${membership.current_period_end ? ` until ${membership.current_period_end.slice(0, 10)}` : ''})`
+            : '(none)'}
+        </li>
+      </ul>
+
+      <form action={setExperienceHoursAction} className="flex gap-2 items-end">
+        <input type="hidden" name="applicant_id" value={id} />
+        <label className="flex-1 text-[11px] text-stone-500">
+          Hands-on hours
+          <input
+            name="experience_hours"
+            type="number"
+            min={0}
+            step={1}
+            defaultValue={hours ?? ''}
+            className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-1.5 text-sm"
+          />
+        </label>
+        <button className="rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-medium hover:bg-stone-50">Save</button>
+      </form>
+
+      {STANDARD_DOCS.map((d) => {
+        const current = verifs.find((v) => v.type === d.type);
+        return (
+          <form key={d.type} action={setVerificationAction} className="border-t border-stone-100 pt-3 space-y-2">
+            <input type="hidden" name="applicant_id" value={id} />
+            <input type="hidden" name="type" value={d.type} />
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-stone-700">{d.label}</span>
+              <span className="text-stone-400">{current ? `${current.status}${current.expires_at ? ` · exp ${current.expires_at}` : ''}` : 'nothing yet'}</span>
+            </div>
+            <div className="flex gap-2">
+              {d.needsExpiry && (
+                <input
+                  name="expires_at"
+                  type="date"
+                  defaultValue={current?.expires_at ?? ''}
+                  aria-label={`${d.label} expires`}
+                  className="flex-1 rounded-lg border border-stone-200 px-2 py-1 text-xs"
+                />
+              )}
+              <button name="status" value="verified" className="rounded-lg bg-emerald-700 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-800">
+                Verify
+              </button>
+              <button name="status" value="rejected" className="rounded-lg border border-stone-300 px-3 py-1 text-xs hover:bg-stone-50">
+                Reject
+              </button>
+            </div>
+          </form>
+        );
+      })}
+
+      {!membership?.stripe_subscription_id && (
+        <form action={compMembershipAction} className="border-t border-stone-100 pt-3 space-y-2">
+          <input type="hidden" name="user_id" value={id} />
+          <div className="text-xs font-medium text-stone-700">Comp a membership</div>
+          <div className="flex gap-2">
+            <select name="months" defaultValue="12" className="rounded-lg border border-stone-200 px-2 py-1 text-xs">
+              <option value="1">1 month</option>
+              <option value="3">3 months</option>
+              <option value="6">6 months</option>
+              <option value="12">12 months</option>
+            </select>
+            <input
+              name="reason"
+              required
+              placeholder="Reason (e.g. pilot)"
+              className="flex-1 rounded-lg border border-stone-200 px-2 py-1 text-xs"
+            />
+            <button className="rounded-lg border border-stone-300 px-3 py-1 text-xs hover:bg-stone-50">Comp</button>
+          </div>
+          <p className="text-[11px] text-stone-400">
+            Approval auto-grants a founding year while founding spots remain.
+          </p>
+        </form>
+      )}
+    </section>
+  );
 }
