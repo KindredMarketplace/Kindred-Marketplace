@@ -29,12 +29,12 @@ export async function GET() {
       version: '0.1.0',
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[health] check failed', err instanceof Error ? err.message : err);
     return NextResponse.json(
       {
         status: 'error',
         uptime_ms: Date.now() - startedAt,
-        message,
+        message: 'Health check failed.',
       },
       { status: 503 }
     );

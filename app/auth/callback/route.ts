@@ -13,7 +13,13 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   // `next` is an optional return path after successful login
-  const next = searchParams.get('next') ?? '/';
+  // Only same-site relative paths are honoured (no //host, no @host, no ..),
+  // so this can't be used to bounce someone to another site.
+  const rawNext = searchParams.get('next') ?? '/';
+  const next =
+    rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.includes('..') && !rawNext.includes('\\') && !rawNext.includes('@')
+      ? rawNext
+      : '/';
 
   if (code) {
     const supabase = await createClient();
