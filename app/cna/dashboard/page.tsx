@@ -113,17 +113,18 @@ export default async function CnaDashboardPage() {
             <div className="text-2xl">⚠️</div>
             <div className="flex-1">
               <div className="font-display text-lg font-medium mb-1">
-                Your profile isn&rsquo;t visible to families yet
+                Families can&rsquo;t see you yet
               </div>
               <p className="text-sm text-ink/75 leading-relaxed mb-3">
-                You can still apply to jobs, but families browsing for caregivers won&rsquo;t see you
-                until you finish your profile: photo, bio, hourly rate, service area, and credentials.
+                Kindred lists a caregiver after a short conversation with us and once your documents are
+                verified: Level 2 background check, photo ID and your own liability insurance. Upload them
+                on your Credentials page and we&rsquo;ll update you as each one is reviewed.
               </p>
               <Link
-                href="/cna/profile"
+                href="/cna/compliance"
                 className="inline-block bg-coral text-cream px-5 py-2.5 rounded-full text-sm font-medium hover:bg-inkdark transition"
               >
-                Finish your profile →
+                Upload documents →
               </Link>
             </div>
           </div>

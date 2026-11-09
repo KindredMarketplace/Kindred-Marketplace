@@ -31,6 +31,10 @@ const ApplicationSchema = z.object({
   last_name: z.string().trim().min(1, 'Last name is required.').max(80),
   pronouns: z.string().trim().max(40).optional().or(z.literal('')),
   email: z.string().trim().toLowerCase().email('Enter a valid email address.'),
+  password: z
+    .string()
+    .min(8, 'Use at least 8 characters.')
+    .max(72, 'Use 72 characters or fewer.'),
   phone: z.string().trim().min(7, 'Enter a valid phone number.').max(30),
   zip: z.string().trim().regex(/^\d{5}$/, 'Enter a 5-digit ZIP code.'),
   credential: z.enum(['cna', 'hha', 'lpn', 'rn', 'other'], {
@@ -72,11 +76,12 @@ export async function createApplicationAction(
   const data = parsed.data;
   const svc = createServiceClient();
 
-  // 1. Create the auth account (random password; never shown).
+  // 1. Create the caregiver's account with the password they chose, so they
+  //    can come back to upload their Kindred Standard documents.
   const fullName = `${data.first_name} ${data.last_name}`.trim();
   const { data: created, error: createErr } = await svc.auth.admin.createUser({
     email: data.email,
-    password: `${crypto.randomUUID()}${crypto.randomUUID()}`,
+    password: data.password,
     email_confirm: true,
     user_metadata: { full_name: fullName, role: 'cna' },
   });

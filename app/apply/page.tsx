@@ -44,6 +44,7 @@ export default function ApplyPage() {
   const [resume, setResume] = useState<File | null>(null);
   const [media, setMedia] = useState<File | null>(null);
   const [phase, setPhase] = useState<'idle' | 'working' | 'done'>('idle');
+  const [signedIn, setSignedIn] = useState(false);
   const [progress, setProgress] = useState('');
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -81,6 +82,7 @@ export default function ApplyPage() {
       last_name: fd.get('last_name')?.toString() ?? '',
       pronouns: fd.get('pronouns')?.toString() ?? '',
       email: fd.get('email')?.toString() ?? '',
+      password: fd.get('password')?.toString() ?? '',
       phone: fd.get('phone')?.toString() ?? '',
       zip: fd.get('zip')?.toString() ?? '',
       credential: fd.get('credential')?.toString() ?? '',
@@ -143,6 +145,13 @@ export default function ApplyPage() {
       return;
     }
 
+    // Sign them in so "Upload my documents" opens straight to their
+    // Credentials page. If this fails they can still log in normally.
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: payload.email.trim().toLowerCase(),
+      password: payload.password,
+    });
+    setSignedIn(!signInErr);
     setPhase('done');
   }
 
@@ -157,16 +166,37 @@ export default function ApplyPage() {
             Your application is in.
           </h1>
           <p className="text-ink/70 max-w-md mx-auto leading-relaxed">
-            Thank you for taking the time — and for trusting us with your story. A real person
-            reviews every application. If it feels like a fit, we&apos;ll reach out to set up a
-            short conversation.
+            Thank you for trusting us with your story. A real person reviews every application,
+            and if it feels like a fit, we&apos;ll reach out to set up a short conversation.
           </p>
-          <Link
-            href="/"
-            className="mt-8 inline-block rounded-xl bg-deepteal px-6 py-2.5 font-medium text-cream hover:bg-deepteal/90"
-          >
-            Back to Kindred
-          </Link>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-ink/10 bg-white p-6 text-left">
+          <div className="text-xs uppercase tracking-widest text-ink/50 font-mono mb-2">One more step</div>
+          <h2 className="font-display text-2xl font-medium mb-2">Your Kindred Standard documents</h2>
+          <p className="text-sm text-ink/70 leading-relaxed mb-4">
+            Before families can see you, we need three things on file. Upload what you have now.
+            You can add the rest any time by logging in with your email and the password you just made.
+          </p>
+          <ul className="space-y-2 text-sm text-ink/80 mb-6">
+            <li className="flex gap-3"><span aria-hidden="true">🛡️</span>Your Level 2 background check results</li>
+            <li className="flex gap-3"><span aria-hidden="true">🪪</span>A photo of your driver&apos;s license or state ID</li>
+            <li className="flex gap-3"><span aria-hidden="true">📄</span>Proof of your own liability insurance</li>
+          </ul>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link
+              href={signedIn ? '/cna/compliance' : '/login?next=/cna/compliance'}
+              className="inline-block text-center rounded-xl bg-deepteal px-6 py-2.5 font-medium text-cream hover:bg-deepteal/90"
+            >
+              Upload my documents
+            </Link>
+            <Link
+              href={signedIn ? '/cna/dashboard' : '/'}
+              className="inline-block text-center rounded-xl border border-ink/15 px-6 py-2.5 font-medium text-ink hover:bg-mist"
+            >
+              I&apos;ll do it later
+            </Link>
+          </div>
         </div>
       </Shell>
     );
@@ -212,6 +242,21 @@ export default function ApplyPage() {
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label="Email" name="email" type="email" error={errors.email} required disabled={working} />
           <Field label="Phone" name="phone" type="tel" error={errors.phone} required disabled={working} />
+        </div>
+
+        <div>
+          <Field
+            label="Create a password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            error={errors.password}
+            required
+            disabled={working}
+          />
+          <p className="mt-1 text-xs text-ink/55">
+            At least 8 characters. You&apos;ll use it to log back in and upload your background check, ID and insurance.
+          </p>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">
@@ -347,6 +392,7 @@ function Field({
   optional,
   disabled,
   inputMode,
+  autoComplete,
 }: {
   label: string;
   name: string;
@@ -357,6 +403,7 @@ function Field({
   optional?: boolean;
   disabled?: boolean;
   inputMode?: 'numeric' | 'text' | 'tel' | 'email';
+  autoComplete?: string;
 }) {
   return (
     <div>
@@ -369,6 +416,8 @@ function Field({
         name={name}
         type={type}
         inputMode={inputMode}
+        autoComplete={autoComplete}
+        minLength={type === 'password' ? 8 : undefined}
         placeholder={placeholder}
         required={required}
         disabled={disabled}

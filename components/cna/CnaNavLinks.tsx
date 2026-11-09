@@ -19,6 +19,7 @@ const LINKS = [
   { href: '/cna/jobs', label: 'Find jobs' },
   { href: '/cna/schedule', label: 'My schedule' },
   { href: '/cna/messages', label: 'Messages' },
+  { href: '/cna/compliance', label: 'Credentials' },
   { href: '/cna/membership', label: 'Membership' },
 ];
 
