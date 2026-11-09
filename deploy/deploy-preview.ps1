@@ -75,10 +75,14 @@ try {
     # Exact bytes, no trailing newline, so the value isn't altered. The value
     # goes in through a file, never on the command line or the screen.
     [System.IO.File]::WriteAllText($tmp, $value)
+    # NEXT_PUBLIC_ values are meant to be seen by the browser (Supabase's anon
+    # key is designed for that), so they're stored as readable config. The
+    # service role key is stored as a secret nobody can read back.
+    $kind = if ($name -like 'NEXT_PUBLIC_*') { 'config' } else { 'secret' }
     foreach ($target in @('production', 'preview')) {
-      cmd /c "npx --yes $Vercel env add $name --environment $target --force --yes --non-interactive --scope $Scope < `"$tmp`" >nul 2>`"$errLog`""
+      cmd /c "npx --yes $Vercel env add $name --environment $target --type $kind --force --yes --non-interactive --scope $Scope < `"$tmp`" >nul 2>`"$errLog`""
       if ($LASTEXITCODE -ne 0) {
-        Get-Content $errLog | Select-String -NotMatch 'eyJ|sk_|whsec_' | Select-Object -Last 8 | ForEach-Object { Write-Host "     $_" }
+        Get-Content $errLog | Select-String -NotMatch 'eyJ|sk_live|sk_test|whsec_' | Select-Object -Last 12 | ForEach-Object { Write-Host "     $_" }
         Fail "Could not save $name for $target."
       }
     }
