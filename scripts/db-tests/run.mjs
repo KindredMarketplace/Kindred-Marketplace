@@ -4,6 +4,11 @@ const db = new PGlite();
 await db.exec(fs.readFileSync('fixture.sql','utf8'));
 await db.exec(fs.readFileSync('migration.sql','utf8'));
 await db.exec(fs.readFileSync('migration25.sql','utf8'));
+// Supabase's server role: full table access, but no special schema rights
+// beyond what our migrations grant (00029 grants it kindred_internal).
+await db.exec(`do $$ begin create role service_role nologin bypassrls; exception when duplicate_object then null; end $$;
+  grant usage on schema public to service_role; grant all on all tables in schema public to service_role;`);
+if (!process.env.SKIP_00029) await db.exec(fs.readFileSync('../../supabase/migrations/00029_service_role_internal_grants.sql','utf8'));
 // post-migration test setup (as superuser)
 await db.exec(`
   update public.cna_profiles set experience_hours = 2000 where user_id in ('00000000-0000-0000-0000-0000000000e1','00000000-0000-0000-0000-0000000000e2');
@@ -260,6 +265,16 @@ check('M2b: withdrawn application no longer unlocks the caregiver', Array.isArra
 await as(L, `update public.cna_profiles set stripe_account_id = 'acct_evil', stripe_onboarding_complete = true where user_id = '${L}'`);
 const st = (await db.query(`select stripe_account_id, stripe_onboarding_complete from public.cna_profiles where user_id='${L}'`)).rows[0];
 check('L3: caregivers cannot set Stripe fields', st?.stripe_account_id === null && st?.stripe_onboarding_complete === false, st);
+
+// 00029: the server (service_role) can write through the guard triggers
+async function asService(sql) {
+  await db.exec('reset role'); await db.exec('set role service_role');
+  try { return (await db.query(sql)).rows; } catch (e) { return { error: e.message }; } finally { await db.exec('reset role'); }
+}
+const svcWrite = await asService(`update public.cna_profiles set experience_hours = 3100 where user_id = '${P}' returning experience_hours`);
+check('00029: server can update caregiver profiles (application intake / admin approval)', Array.isArray(svcWrite) && svcWrite[0]?.experience_hours === 3100, svcWrite);
+const svcUser = await asService(`update public.users set full_name = 'Pat Intake' where id = '${P}' returning full_name`);
+check('00029: server can update users (intake details)', Array.isArray(svcUser) && svcUser[0]?.full_name === 'Pat Intake', svcUser);
 
 let fail = 0;
 for (const r of results) { console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}`); if (!r.ok) { fail++; console.log('      ', JSON.stringify(r.detail)); } }

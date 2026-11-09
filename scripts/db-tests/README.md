@@ -12,4 +12,4 @@ sed -e 's/^notify pgrst.*//' ../../supabase/migrations/00025_account_and_messagi
 node run.mjs
 ```
 
-Last run 2026-11-05: 68/68 passed (both apply orders), including every exploit from two rounds of security review.
+Last run 2026-11-09: 70/70 passed, including the service-role check for 00029 (without 00029 it fails with the same "permission denied for schema kindred_internal" seen on the live preview).
