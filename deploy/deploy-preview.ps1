@@ -63,30 +63,41 @@ $vars = [ordered]@{
   'NEXT_PUBLIC_SUPABASE_URL'      = $envMap['NEXT_PUBLIC_SUPABASE_URL']
   'NEXT_PUBLIC_SUPABASE_ANON_KEY' = $envMap['NEXT_PUBLIC_SUPABASE_ANON_KEY']
   'SUPABASE_SERVICE_ROLE_KEY'     = $envMap['SUPABASE_SERVICE_ROLE_KEY']
-  'NEXT_PUBLIC_APP_URL'           = 'https://kindred-app.vercel.app'
+  'NEXT_PUBLIC_APP_URL'           = 'https://kindred-app-ten.vercel.app'
   'NEXT_PUBLIC_NOINDEX'           = '1'
 }
 $tmp = [System.IO.Path]::GetTempFileName()
+$errLog = [System.IO.Path]::GetTempFileName()
 try {
   foreach ($name in $vars.Keys) {
     $value = $vars[$name]
-    if (-not $value -or $value -match 'PASTE|YOUR_') { Write-Host "     skipped $name (not set in .env.local)"; continue }
-    # Exact bytes, no trailing newline, so the value isn't altered.
+    if (-not $value -or $value -match 'PASTE|YOUR_') { Fail "$name is missing from .env.local." }
+    # Exact bytes, no trailing newline, so the value isn't altered. The value
+    # goes in through a file, never on the command line or the screen.
     [System.IO.File]::WriteAllText($tmp, $value)
     foreach ($target in @('production', 'preview')) {
-      [void](Invoke-VercelQuiet "env rm $name $target --yes --scope $Scope")
-      cmd /c "npx --yes $Vercel env add $name $target --scope $Scope < `"$tmp`" >nul 2>&1"
-      if ($LASTEXITCODE -ne 0) { Fail "Could not save $name for $target." }
+      cmd /c "npx --yes $Vercel env add $name --environment $target --force --yes --non-interactive --scope $Scope < `"$tmp`" >nul 2>`"$errLog`""
+      if ($LASTEXITCODE -ne 0) {
+        Get-Content $errLog | Select-String -NotMatch 'eyJ|sk_|whsec_' | Select-Object -Last 8 | ForEach-Object { Write-Host "     $_" }
+        Fail "Could not save $name for $target."
+      }
     }
     Write-Host "     set $name"
   }
 } finally {
-  Remove-Item $tmp -ErrorAction SilentlyContinue
+  Remove-Item $tmp, $errLog -ErrorAction SilentlyContinue
 }
+
+# Double-check: the names (not values) Vercel now has for production.
+$listed = (cmd /c "npx --yes $Vercel env ls --environment production --scope $Scope 2>nul") -join "`n"
+foreach ($name in $vars.Keys) {
+  if ($listed -notmatch [regex]::Escape($name)) { Fail "Vercel still doesn't list $name for production." }
+}
+Write-Host '     Vercel confirms all 5 settings are saved.'
 
 Write-Host '5/5  Building and deploying (a few minutes; lots of text is normal)...'
 & npx --yes $Vercel deploy --prod --yes --scope $Scope
 if ($LASTEXITCODE -ne 0) { Fail 'The deploy did not finish.' }
 
 Write-Host ''
-Write-Host 'Done. Open the https://...vercel.app link printed above on your phone.' -ForegroundColor Green
+Write-Host 'Done. Open https://kindred-app-ten.vercel.app on your phone.' -ForegroundColor Green
