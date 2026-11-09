@@ -12,9 +12,9 @@ created: 2026-11-05
 | Phase | Dates | Title | Ships |
 |---|---|---|---|
 | 1 | Nov 5 – 6 ✅ | **Business-model foundation** | Build passes; K brand; installable PWA; B2B archived; memberships + founding 25; Kindred Standard; locked preview with DB-level redaction; Stripe Checkout + webhook; migrations 00023–00026 live; platform-model copy across every page; facilities removed; Pricing in the top nav |
-| 2 | Nov 7 – 22 | Caregiver onboarding to "listed" | ID / L2 / insurance uploads on the compliance page (private storage, signed URLs); self-reported hours in /apply (admin confirms); admin review queue; "You're listed" state; private avatars bucket |
+| 2 | Nov 7 – 22 | Caregiver onboarding to "listed" | Proof of hours with the application; Level 2 / ID / insurance only after acceptance (Nick, Nov 9); private uploads with signed URLs; admin review queue + verifications queue; interview invites via Calendly link; one-time "You're in!" welcome; status-aware caregiver dashboard; insurer starting points on Get insured; background-check route decided (see Nov 9 notes) |
 | 3 | Nov 23 – Dec 6 | Family experience | Real browse filters; full profile page (Marcus's "does she have this?" test); member-gated messaging + job posts; family FAQ (household employer, HomePay pointer); comp family membership from admin |
-| 4 | Dec 7 – 20 | Distance + matching + notifications | Google Maps key; caregiver work radius; distance shown; jobs-near-me; email notifications (Resend) for messages, applications, verification expiring |
+| 4 | Dec 7 – 20 | Distance + matching + notifications | Google Maps key; caregiver work radius; distance shown; jobs-near-me; **notifications system** (below) |
 | 5 | Dec 21 – Jan 10 | Trust loop + polish | Reviews after hire (through a function, not public rows); report / block; legal pages final with attorney; accessibility pass; Sentry; Next `middleware` → `proxy` rename; React 19 |
 | 6 | Jan 11 – 25 | Launch hardening | Full pentest re-run; Zod 4; Playwright E2E for both journeys; Supabase advisors clean; leaked-password protection; Vercel production on kindredmarketplace.com; Stripe live keys + dashboard webhook |
 | 🚀 | **Feb 1** | **Launch** | Founding-25 recruiting live, ads pointed at the app |
@@ -30,3 +30,21 @@ created: 2026-11-05
 6. Membership app layer: `lib/membership.ts`, Stripe Checkout route, webhook, membership pages for both portals, admin comp.
 7. Locked preview UI: `/browse`, `/client/browse` and caregiver jobs read through the browse functions; unlock CTAs; `/kindred-standard` page.
 8. Verify: build, smoke screenshots, SQL property checks.
+
+
+## Notifications (Phase 4, noted Nov 9)
+
+Nick's list of moments that should notify someone. The `notifications` table already exists (00009); what's missing is creating rows at each moment, an in-app bell, email (Resend), and phone push (web push works for the installed iPhone/Android app; Capacitor push in Phase 7).
+
+| Who | Moment |
+|---|---|
+| Caregiver | Application received |
+| Caregiver | Invited to interview (with booking link) / interview booked |
+| Caregiver | Accepted into Kindred ("You're in") |
+| Caregiver | Background check verified / ID verified / insurance verified / a document needs a new copy |
+| Caregiver | Listed: families can now find you |
+| Caregiver | Insurance or background check expiring in 30 days |
+| Caregiver | New job posted in your area |
+| Both | New message |
+| Family | A caregiver applied to your job / accepted your message request |
+| Admin | New application / new document uploaded for review |

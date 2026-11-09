@@ -6,8 +6,8 @@
  * "vetted partners" with a Kindred group rate, invented prices and coverage
  * tables, and affiliate-commission copy. Kindred has no insurance partnerships
  * today, so all of that is gone. What's left is plain education: why coverage
- * matters, what to look for in a policy, and where to see your Kindred
- * Standard progress. Static content, native <details> accordions, no client JS.
+ * matters, what to look for in a policy, a couple of places caregivers
+ * commonly start (no partnership, no referral pay), and where to upload proof. Static content, native <details> accordions, no client JS.
  *
  * Shell (nav/footer) comes from app/cna/layout.tsx.
  */
@@ -23,11 +23,27 @@ const LOOK_FOR = [
   { title: 'A certificate of insurance', body: 'Your insurer should give you a certificate showing your name, policy dates, and limits. That’s what you’ll share as proof.' },
 ];
 
+// Places caregivers can start comparing. Kindred has no partnership with
+// either, earns nothing from them, and doesn't quote prices it can't verify:
+// neither site publishes a starting price, so caregivers get a quote directly.
+const PLACES_TO_START = [
+  {
+    name: 'NSO (Nurses Service Organization)',
+    url: 'https://www.nso.com/malpractice-insurance/individuals/nursing-professionals',
+    body: 'Individual professional liability that lists nursing assistants, home health aides, personal care aides and caregivers among the roles it covers. Online quote.',
+  },
+  {
+    name: 'CM&F Group',
+    url: 'https://www.cmfgroup.com/malpractice-insurance/home-health-care-professionals/certified-nursing-assistant-malpractice-insurance',
+    body: 'Individual CNA malpractice coverage up to $1 million per claim, with license defense, that it says follows you across contracted work. Online quote.',
+  },
+];
+
 const FAQS = [
   { q: 'Is insurance required to work on Kindred?', a: 'Yes. Your own liability insurance is part of the Kindred Standard, along with a personal interview, 1,500+ hours of hands-on experience, a Level 2 background check, and a verified ID.' },
   { q: "Doesn't Kindred's coverage protect me?", a: 'No. You work for yourself, not for Kindred, so Kindred’s insurance doesn’t extend to the care you provide. Your own policy is what protects you on the job.' },
-  { q: 'Does Kindred recommend a specific insurer?', a: 'Not today. Kindred has no insurance partnerships and doesn’t earn anything when you buy a policy. Compare a few insurers that cover independent CNAs and pick the one that fits your work.' },
-  { q: 'How do I show Kindred my proof of insurance?', a: (<>Your Kindred Standard progress, including insurance, is on your <Link href="/cna/membership" className="text-deepteal hover:text-coral">Membership page</Link>. Keep your certificate of insurance handy.</>) },
+  { q: 'Does Kindred get anything if I buy from one of these?', a: 'No. Kindred has no insurance partnerships and isn’t paid for pointing you to anyone. We list a couple of places caregivers commonly start; you’re free to use any insurer whose policy covers your in-home, self-employed work.' },
+  { q: 'When do I need insurance, and how do I show it?', a: (<>Only after Kindred accepts you, so you never pay for a policy before you know you&rsquo;re in. Then upload your certificate of insurance on your <Link href="/cna/compliance" className="text-deepteal hover:text-coral">Credentials page</Link>.</>) },
   { q: 'Do families need to see my policy?', a: 'Some families will ask. Sharing your certificate of insurance is a simple way to build trust before you start.' },
 ];
 
@@ -94,8 +110,8 @@ export default function CnaGetInsuredPage() {
           <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">Choosing a policy</div>
           <h2 className="font-display text-3xl font-medium mb-2">What to look for</h2>
           <p className="text-ink/70 max-w-2xl mb-8">
-            Kindred doesn&rsquo;t sell insurance or partner with an insurer. Compare a few policies made
-            for independent CNAs and check that they cover these.
+            Kindred doesn&rsquo;t sell insurance or partner with an insurer. Whichever policy you
+            choose, check that it covers these.
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {LOOK_FOR.map((item) => (
@@ -108,6 +124,31 @@ export default function CnaGetInsuredPage() {
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
+
+        {/* WHERE TO START */}
+        <section className="mb-14 fade-up" style={{ animationDelay: '.18s' }}>
+          <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">Where to start</div>
+          <h2 className="font-display text-3xl font-medium mb-2">Places caregivers often start</h2>
+          <p className="text-ink/70 max-w-2xl mb-6">
+            Kindred doesn&rsquo;t partner with these companies or get paid by them. When you get a quote, ask
+            one question plainly: <span className="italic">&ldquo;Does this cover me as a self-employed caregiver working in
+            clients&rsquo; homes?&rdquo;</span>
+          </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            {PLACES_TO_START.map((p) => (
+              <a
+                key={p.name}
+                href={p.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="card-hover block bg-white border border-ink/10 rounded-2xl p-6"
+              >
+                <div className="font-display text-xl font-medium mb-2">{p.name} <span className="text-ink/40 text-base">↗</span></div>
+                <p className="text-sm text-ink/70 leading-relaxed">{p.body}</p>
+              </a>
             ))}
           </div>
         </section>

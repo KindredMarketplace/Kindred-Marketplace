@@ -16,6 +16,7 @@ import { logoutAction } from '@/app/(auth)/actions';
 import { KindredMark } from '@/components/KindredMark';
 import { SiteFooter } from '@/components/SiteFooter';
 import { CnaNavLinks, CnaMobileMenu } from '@/components/cna/CnaNavLinks';
+import { WelcomeCelebration } from '@/components/cna/WelcomeCelebration';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { loadUnreadTotal } from '@/lib/messaging';
 import { InboxRealtimeRefresh } from '@/components/messaging/InboxRealtimeRefresh';
@@ -35,7 +36,7 @@ export default async function CnaLayout({ children }: { children: React.ReactNod
     supabase.from('users').select('full_name, email').eq('id', user.id).single(),
     supabase
       .from('cna_profiles')
-      .select('display_name, rating_avg, rating_count, years_experience, service_zip, tier, availability_status')
+      .select('display_name, rating_avg, rating_count, years_experience, service_zip, tier, availability_status, application_status, welcome_seen_at')
       .eq('user_id', user.id)
       .maybeSingle(),
     loadUnreadTotal(supabase, user.id),
@@ -43,6 +44,18 @@ export default async function CnaLayout({ children }: { children: React.ReactNod
 
   const me = userRes.data;
   const profile = profileRes.data;
+
+  // One-time "You're in!" welcome after Kindred accepts them.
+  const showWelcome =
+    !!profile &&
+    (profile.application_status === 'verifying' || profile.application_status === 'approved') &&
+    !profile.welcome_seen_at;
+  let listedNow = false;
+  if (showWelcome) {
+    const { data: access } = await supabase.rpc('my_access');
+    const row = Array.isArray(access) ? access[0] : access;
+    listedNow = !!(row as { is_listed?: boolean } | null)?.is_listed;
+  }
 
   const fullName = me?.full_name ?? 'Caregiver';
   const firstName = (profile?.display_name || fullName).split(' ')[0];
@@ -129,6 +142,8 @@ export default async function CnaLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
+
+      {showWelcome && <WelcomeCelebration firstName={firstName} listed={listedNow} />}
 
       {/* PAGE CONTENT */}
       <InboxRealtimeRefresh currentUserId={user.id} />

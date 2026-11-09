@@ -681,6 +681,7 @@ export type Database = {
           display_name: string
           experience_hours: number | null
           experience_hours_reported: number | null
+          welcome_seen_at: string | null
           credential: string | null
           gender: string | null
           headline: string | null
@@ -725,6 +726,7 @@ export type Database = {
           display_name: string
           experience_hours?: number | null
           experience_hours_reported?: number | null
+          welcome_seen_at?: string | null
           credential?: string | null
           gender?: string | null
           headline?: string | null
@@ -769,6 +771,7 @@ export type Database = {
           display_name?: string
           experience_hours?: number | null
           experience_hours_reported?: number | null
+          welcome_seen_at?: string | null
           credential?: string | null
           gender?: string | null
           headline?: string | null
@@ -2916,6 +2919,7 @@ export type Database = {
         | "visit_log"
         | "invoice"
         | "other"
+        | "work_history"
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "void"
       job_application_status:
         | "submitted"
@@ -3195,6 +3199,7 @@ export const Constants = {
         "visit_log",
         "invoice",
         "other",
+        "work_history",
       ],
       invoice_status: ["draft", "sent", "paid", "overdue", "void"],
       job_application_status: [

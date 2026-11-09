@@ -47,6 +47,7 @@ const ApplicationSchema = z.object({
     .min(1500, 'Kindred currently accepts caregivers with at least 1,500 hours of hands-on experience.')
     .max(200000, 'That number looks too high. Please double-check it.'),
   resume_ext: z.string().trim().max(10),
+  hours_ext: z.string().trim().max(10),
   media_ext: z.string().trim().max(10),
   media_kind: z.enum(['video', 'audio']),
 });
@@ -57,6 +58,7 @@ export type CreateApplicationResult =
       userId: string;
       resume: { path: string; token: string };
       media: { path: string; token: string };
+      hours: { path: string; token: string };
     }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
@@ -132,11 +134,17 @@ export async function createApplicationAction(
   const safeMediaExt = data.media_ext.replace(/[^a-z0-9]/gi, '').slice(0, 8) || 'mp4';
   const resumePath = `${userId}/application-resume.${safeResumeExt}`;
   const mediaPath = `${userId}/application-media.${safeMediaExt}`;
+  const safeHoursExt = data.hours_ext.replace(/[^a-z0-9]/gi, '').slice(0, 8) || 'pdf';
+  const hoursPath = `${userId}/application-hours.${safeHoursExt}`;
 
   const resumeSigned = await svc.storage.from(BUCKET).createSignedUploadUrl(resumePath);
   const mediaSigned = await svc.storage.from(BUCKET).createSignedUploadUrl(mediaPath);
+  const hoursSigned = await svc.storage.from(BUCKET).createSignedUploadUrl(hoursPath);
 
-  if (resumeSigned.error || mediaSigned.error || !resumeSigned.data || !mediaSigned.data) {
+  if (
+    resumeSigned.error || mediaSigned.error || hoursSigned.error ||
+    !resumeSigned.data || !mediaSigned.data || !hoursSigned.data
+  ) {
     await svc.auth.admin.deleteUser(userId);
     return { ok: false, error: 'Could not prepare the file upload. Please try again.' };
   }
@@ -146,6 +154,7 @@ export async function createApplicationAction(
     userId,
     resume: { path: resumePath, token: resumeSigned.data.token },
     media: { path: mediaPath, token: mediaSigned.data.token },
+    hours: { path: hoursPath, token: hoursSigned.data.token },
   };
 }
 
@@ -155,6 +164,7 @@ export async function finalizeApplicationAction(args: {
   userId: string;
   resumePath: string;
   mediaPath: string;
+  hoursPath: string;
   mediaKind: 'video' | 'audio';
 }): Promise<FinalizeResult> {
   // This runs before the applicant has a session, so nothing here is trusted:
@@ -165,15 +175,19 @@ export async function finalizeApplicationAction(args: {
   if (args.mediaKind !== 'video' && args.mediaKind !== 'audio') return { ok: false, error: 'Missing application.' };
   const ownFile = (p: string, stem: string) =>
     typeof p === 'string' && new RegExp(`^${args.userId}/${stem}\\.[a-z0-9]{1,8}$`, 'i').test(p);
-  if (!ownFile(args.resumePath, 'application-resume') || !ownFile(args.mediaPath, 'application-media')) {
+  if (
+    !ownFile(args.resumePath, 'application-resume') ||
+    !ownFile(args.mediaPath, 'application-media') ||
+    !ownFile(args.hoursPath, 'application-hours')
+  ) {
     return { ok: false, error: 'Missing application.' };
   }
 
   const svc = createServiceClient();
 
   const { data: files } = await svc.storage.from(BUCKET).list(args.userId);
-  const names = new Set((files ?? []).map((f) => `${args.userId}/${f.name}`));
-  if (!names.has(args.resumePath) || !names.has(args.mediaPath)) {
+  const byPath = new Map((files ?? []).map((f) => [`${args.userId}/${f.name}`, f]));
+  if (!byPath.has(args.resumePath) || !byPath.has(args.mediaPath) || !byPath.has(args.hoursPath)) {
     return { ok: false, error: 'Your files did not finish uploading. Please try again.' };
   }
 
@@ -191,6 +205,27 @@ export async function finalizeApplicationAction(args: {
 
   if (error) {
     return { ok: false, error: 'Your files uploaded but we could not submit. Please contact us.' };
+  }
+
+  // Record the proof of hours in the document vault so it shows up for review
+  // (and alongside any extra proof they add later from Credentials).
+  const hoursFile = byPath.get(args.hoursPath);
+  const meta = (hoursFile?.metadata ?? {}) as { mimetype?: string; size?: number };
+  const { data: existingDoc } = await svc
+    .from('documents')
+    .select('id')
+    .eq('user_id', args.userId)
+    .eq('storage_path', args.hoursPath)
+    .maybeSingle();
+  if (!existingDoc) {
+    await svc.from('documents').insert({
+      user_id: args.userId,
+      type: 'work_history',
+      storage_path: args.hoursPath,
+      original_filename: `proof-of-hours.${args.hoursPath.split('.').pop()}`,
+      mime_type: meta.mimetype ?? null,
+      size_bytes: meta.size ?? null,
+    });
   }
   return { ok: true };
 }

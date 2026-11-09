@@ -25,6 +25,7 @@ import {
 const BUCKET = 'kindred-documents';
 const MEDIA_MAX_MB = 300;
 const RESUME_MAX_MB = 15;
+const HOURS_MAX_MB = 15;
 
 const PROMPT =
   'Tell us about a client who stuck with you — something they said or did, good or hard, that you still carry. (Please don\u2019t use their real name.)';
@@ -42,6 +43,7 @@ export default function ApplyPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [topError, setTopError] = useState<string | null>(null);
   const [resume, setResume] = useState<File | null>(null);
+  const [hours, setHours] = useState<File | null>(null);
   const [media, setMedia] = useState<File | null>(null);
   const [phase, setPhase] = useState<'idle' | 'working' | 'done'>('idle');
   const [signedIn, setSignedIn] = useState(false);
@@ -60,6 +62,10 @@ export default function ApplyPage() {
     if (!resume) localErrors.resume = 'Please attach your resume.';
     else if (resume.size > RESUME_MAX_MB * 1024 * 1024)
       localErrors.resume = `Resume must be under ${RESUME_MAX_MB} MB.`;
+
+    if (!hours) localErrors.hours = 'Please add proof of your hours.';
+    else if (hours.size > HOURS_MAX_MB * 1024 * 1024)
+      localErrors.hours = `That file must be under ${HOURS_MAX_MB} MB. A PDF or a photo works.`;
 
     if (!media) localErrors.media = 'Please add your video or audio answer.';
     else if (media.size > MEDIA_MAX_MB * 1024 * 1024)
@@ -89,6 +95,7 @@ export default function ApplyPage() {
       license_number: fd.get('license_number')?.toString() ?? '',
       experience_hours: fd.get('experience_hours')?.toString() ?? '',
       resume_ext: extOf(resume!),
+      hours_ext: extOf(hours!),
       media_ext: extOf(media!),
       media_kind: mediaKind,
     };
@@ -121,6 +128,16 @@ export default function ApplyPage() {
       return;
     }
 
+    setProgress('Uploading your proof of hours…');
+    const upH = await supabase.storage
+      .from(BUCKET)
+      .uploadToSignedUrl(created.hours.path, created.hours.token, hours!);
+    if (upH.error) {
+      setPhase('idle');
+      setTopError('Your proof of hours failed to upload. Please try again.');
+      return;
+    }
+
     setProgress(mediaKind === 'audio' ? 'Uploading your audio…' : 'Uploading your video…');
     const up2 = await supabase.storage
       .from(BUCKET)
@@ -136,6 +153,7 @@ export default function ApplyPage() {
       userId: created.userId,
       resumePath: created.resume.path,
       mediaPath: created.media.path,
+      hoursPath: created.hours.path,
       mediaKind,
     });
 
@@ -172,31 +190,42 @@ export default function ApplyPage() {
         </div>
 
         <div className="mt-8 rounded-2xl border border-ink/10 bg-white p-6 text-left">
-          <div className="text-xs uppercase tracking-widest text-ink/50 font-mono mb-2">One more step</div>
-          <h2 className="font-display text-2xl font-medium mb-2">Your Kindred Standard documents</h2>
-          <p className="text-sm text-ink/70 leading-relaxed mb-4">
-            Before families can see you, we need three things on file. Upload what you have now.
-            You can add the rest any time by logging in with your email and the password you just made.
+          <div className="text-xs uppercase tracking-widest text-ink/50 font-mono mb-4">What happens next</div>
+          <ol className="space-y-4">
+            <li className="flex gap-4">
+              <span className="w-7 h-7 shrink-0 rounded-full bg-sage/30 text-deepteal text-sm font-medium flex items-center justify-center">1</span>
+              <div>
+                <div className="font-medium">We read your application</div>
+                <p className="text-sm text-ink/65 leading-relaxed">Your resume, your hours and your answer. Usually within a few days.</p>
+              </div>
+            </li>
+            <li className="flex gap-4">
+              <span className="w-7 h-7 shrink-0 rounded-full bg-mist text-ink/70 text-sm font-medium flex items-center justify-center">2</span>
+              <div>
+                <div className="font-medium">A short conversation</div>
+                <p className="text-sm text-ink/65 leading-relaxed">If it feels like a fit, we&apos;ll invite you to pick an interview time.</p>
+              </div>
+            </li>
+            <li className="flex gap-4">
+              <span className="w-7 h-7 shrink-0 rounded-full bg-mist text-ink/70 text-sm font-medium flex items-center justify-center">3</span>
+              <div>
+                <div className="font-medium">You&apos;re in, then the paperwork</div>
+                <p className="text-sm text-ink/65 leading-relaxed">
+                  Only after we accept you do we ask for your Level 2 background check, ID and liability
+                  insurance. We&apos;ll walk you through each one.
+                </p>
+              </div>
+            </li>
+          </ol>
+          <p className="text-xs text-ink/55 mt-5">
+            Log in any time with your email and the password you just made to check where things stand.
           </p>
-          <ul className="space-y-2 text-sm text-ink/80 mb-6">
-            <li className="flex gap-3"><span aria-hidden="true">🛡️</span>Your Level 2 background check results</li>
-            <li className="flex gap-3"><span aria-hidden="true">🪪</span>A photo of your driver&apos;s license or state ID</li>
-            <li className="flex gap-3"><span aria-hidden="true">📄</span>Proof of your own liability insurance</li>
-          </ul>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Link
-              href={signedIn ? '/cna/compliance' : '/login?next=/cna/compliance'}
-              className="inline-block text-center rounded-xl bg-deepteal px-6 py-2.5 font-medium text-cream hover:bg-deepteal/90"
-            >
-              Upload my documents
-            </Link>
-            <Link
-              href={signedIn ? '/cna/dashboard' : '/'}
-              className="inline-block text-center rounded-xl border border-ink/15 px-6 py-2.5 font-medium text-ink hover:bg-mist"
-            >
-              I&apos;ll do it later
-            </Link>
-          </div>
+          <Link
+            href={signedIn ? '/cna/dashboard' : '/login'}
+            className="mt-4 inline-block text-center rounded-xl bg-deepteal px-6 py-2.5 font-medium text-cream hover:bg-deepteal/90"
+          >
+            {signedIn ? 'Go to my dashboard' : 'Log in'}
+          </Link>
         </div>
       </Shell>
     );
@@ -211,8 +240,9 @@ export default function ApplyPage() {
           Apply to care with Kindred
         </h1>
         <p className="text-ink/70 leading-relaxed">
-          We keep this short on purpose. Send us your resume and a few details, then answer one
-          question on camera — or just your voice, if you&apos;d rather. We read every one.
+          We keep this short on purpose. Send us your resume, proof of your hours and a few details,
+          then answer one question on camera, or just with your voice if you&apos;d rather. We read
+          every one. Nothing else is needed until we&apos;ve met you.
         </p>
       </div>
 
@@ -255,7 +285,7 @@ export default function ApplyPage() {
             disabled={working}
           />
           <p className="mt-1 text-xs text-ink/55">
-            At least 8 characters. You&apos;ll use it to log back in and upload your background check, ID and insurance.
+            At least 8 characters. You&apos;ll use it to log back in and see where your application stands.
           </p>
         </div>
 
@@ -304,7 +334,7 @@ export default function ApplyPage() {
         </div>
         <p className="text-xs text-ink/55 -mt-2">
           Kindred is for experienced caregivers: we ask for at least 1,500 hours of hands-on care. A
-          full-time year is about 2,000 hours. We&apos;ll confirm it with you during your interview.
+          full-time year is about 2,000 hours. Add proof below and we&apos;ll go over it with you in your interview.
         </p>
 
         {/* Resume */}
@@ -319,6 +349,24 @@ export default function ApplyPage() {
           />
           {resume && <p className="mt-1 text-xs text-ink/50">{resume.name}</p>}
           {errors.resume && <p className="mt-1 text-xs text-coral">{errors.resume}</p>}
+        </div>
+
+        {/* Proof of hours */}
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Proof of your hours</label>
+          <p className="text-xs text-ink/55 mb-2 leading-relaxed">
+            Anything that shows your hands-on hours: a letter from a past employer or agency, pay stubs,
+            timesheets, or a work history printout. One PDF or photo is fine; you can add more later.
+          </p>
+          <input
+            type="file"
+            accept=".pdf,application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
+            disabled={working}
+            onChange={(e) => setHours(e.target.files?.[0] ?? null)}
+            className="block w-full text-sm text-ink/70 file:mr-4 file:rounded-lg file:border-0 file:bg-ink/5 file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:bg-ink/10"
+          />
+          {hours && <p className="mt-1 text-xs text-ink/50">{hours.name}</p>}
+          {errors.hours && <p className="mt-1 text-xs text-coral">{errors.hours}</p>}
         </div>
 
         {/* The one prompt + recording */}

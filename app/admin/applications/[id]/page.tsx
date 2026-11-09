@@ -13,7 +13,8 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { updateApplicationAction } from '../actions';
-import { setVerificationAction, setExperienceHoursAction, compMembershipAction } from '../standard-actions';
+import { setVerificationAction, setExperienceHoursAction, compMembershipAction, setBookingUrlAction } from '../standard-actions';
+import { getBookingUrl, bookingLink, inviteMessage, gmailComposeUrl, mailtoUrl, isoToEasternLocal } from '@/lib/interview';
 import { STAGE_LABEL, STAGE_DOT, STAGE_BLURB, relTime, type AppStage } from '../stages';
 
 export const dynamic = 'force-dynamic';
@@ -87,8 +88,21 @@ export default async function ApplicantDetailPage({
 
   const { data: docs } = await supabase
     .from('documents')
-    .select('id, type, original_filename, uploaded_at')
+    .select('id, type, original_filename, uploaded_at, storage_path')
     .eq('user_id', id);
+
+  // Proof of hours: signed 10-minute links (private bucket).
+  const hoursProof: { name: string; url: string }[] = [];
+  const hoursDocs = (docs ?? []).filter((d) => d.type === 'work_history' && d.storage_path);
+  if (hoursDocs.length > 0) {
+    const svc = createServiceClient();
+    for (const d of hoursDocs) {
+      const { data: signed } = await svc.storage.from('kindred-documents').createSignedUrl(d.storage_path!, 600);
+      if (signed?.signedUrl) hoursProof.push({ name: d.original_filename ?? 'Proof of hours', url: signed.signedUrl });
+    }
+  }
+
+  const bookingUrl = await getBookingUrl(supabase);
 
   // The application's own files live in a private bucket; mint short-lived
   // signed URLs with the service client (admins aren't the file owner under
@@ -252,7 +266,15 @@ export default async function ApplicantDetailPage({
 
           {/* RIGHT: the controls */}
           <aside className="space-y-4 lg:sticky lg:top-6">
-            <StageControls id={id} stage={stage} interviewAt={p.interview_at} />
+            <StageControls
+              id={id}
+              stage={stage}
+              interviewAt={p.interview_at}
+              firstName={p.display_name || (u?.full_name ?? '').split(' ')[0] || 'there'}
+              fullName={[p.display_name, p.last_name].filter(Boolean).join(' ') || u?.full_name || ''}
+              email={u?.email ?? null}
+              bookingUrl={bookingUrl}
+            />
 
             <StandardPanel
               id={id}
@@ -261,6 +283,7 @@ export default async function ApplicantDetailPage({
               reportedHours={p.experience_hours_reported ?? null}
               credential={p.credential ?? null}
               docLinks={docLinks}
+              hoursProof={hoursProof}
               verifs={verifs ?? []}
               membership={membership ?? null}
             />
@@ -322,25 +345,84 @@ function StageControls({
   id,
   stage,
   interviewAt,
+  firstName,
+  fullName,
+  email,
+  bookingUrl,
 }: {
   id: string;
   stage: AppStage;
   interviewAt: string | null;
+  firstName: string;
+  fullName: string;
+  email: string | null;
+  bookingUrl: string | null;
 }) {
+  const link = bookingUrl ? bookingLink(bookingUrl, fullName, email) : null;
+  const invite = link ? inviteMessage(firstName, link) : null;
   return (
     <section className="rounded-2xl border border-stone-200 bg-white p-5 space-y-4">
       <h3 className="font-display text-lg text-stone-900">Move this applicant</h3>
 
       {stage === 'submitted' && (
-        <Advance id={id} to="interviewing" label="Invite to interview →" primary />
+        <Advance id={id} to="interviewing" label="Move to interview →" primary />
       )}
 
       {stage === 'interviewing' && (
         <>
+          <div className="rounded-xl bg-stone-50 border border-stone-200 p-3 space-y-2">
+            <div className="text-xs font-medium text-stone-700">Send the interview invite</div>
+            {link && invite && email ? (
+              <>
+                <p className="text-[11px] text-stone-500 leading-relaxed">
+                  Opens a ready-to-send email to {email} with your booking link. Their name and email
+                  are already filled in on the booking page, so they just pick a time.
+                </p>
+                <div className="flex gap-2">
+                  <a
+                    href={gmailComposeUrl(email, invite.subject, invite.body)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 text-center rounded-lg bg-stone-900 px-3 py-2 text-xs font-medium text-white hover:bg-stone-800"
+                  >
+                    Open in Gmail ↗
+                  </a>
+                  <a
+                    href={mailtoUrl(email, invite.subject, invite.body)}
+                    className="flex-1 text-center rounded-lg border border-stone-300 px-3 py-2 text-xs font-medium text-stone-700 hover:bg-white"
+                  >
+                    Mail app
+                  </a>
+                </div>
+                <p className="text-[11px] text-stone-400">
+                  They also see a &ldquo;Book your interview&rdquo; button when they log in.
+                </p>
+              </>
+            ) : !email ? (
+              <p className="text-[11px] text-stone-500">No email on file for this applicant.</p>
+            ) : null}
+            <details className={link ? 'pt-1' : ''} open={!link}>
+              <summary className="text-[11px] text-stone-500 cursor-pointer">
+                {link ? 'Change booking link' : 'Add your Calendly link first'}
+              </summary>
+              <form action={setBookingUrlAction} className="flex gap-2 mt-2">
+                <input
+                  name="booking_url"
+                  type="url"
+                  required
+                  defaultValue={bookingUrl ?? ''}
+                  placeholder="https://calendly.com/your-name/interview"
+                  className="flex-1 min-w-0 rounded-lg border border-stone-200 px-2 py-1.5 text-xs"
+                />
+                <button className="rounded-lg border border-stone-300 px-3 py-1.5 text-xs hover:bg-white">Save</button>
+              </form>
+            </details>
+          </div>
+
           <form action={updateApplicationAction} className="space-y-2">
             <input type="hidden" name="applicant_id" value={id} />
             <input type="hidden" name="next_status" value="interviewing" />
-            <label className="block text-xs font-medium text-stone-600">Interview time</label>
+            <label className="block text-xs font-medium text-stone-600">Interview time, Eastern (once they book)</label>
             <input
               type="datetime-local"
               name="interview_at"
@@ -354,14 +436,15 @@ function StageControls({
               Save interview time
             </button>
           </form>
-          <Advance id={id} to="verifying" label="Passed — start verification →" primary />
+          <Advance id={id} to="verifying" label="Accept into Kindred 🎉" primary />
         </>
       )}
 
       {stage === 'verifying' && (
         <>
           <p className="text-xs text-stone-500 leading-relaxed">
-            Confirm license, L2 background, ID, CPR/BLS, TB, and two references before approving.
+            They&rsquo;re in, and now see a welcome screen. Next they upload their Level 2 background check,
+            photo ID and liability insurance. Verify each one in the Kindred Standard panel, then publish.
           </p>
           <Advance id={id} to="approved" label="Approve & publish to Browse" primary approve />
           <Advance id={id} to="waitlisted" label="Waitlist" />
@@ -373,7 +456,7 @@ function StageControls({
           <p className="text-sm text-deepteal bg-sage/15 rounded-lg px-3 py-2">
             ✓ Live in Browse. Families can find them.
           </p>
-          <Advance id={id} to="verifying" label="Pull back to verification" />
+          <Advance id={id} to="verifying" label="Pull back to onboarding" />
         </>
       )}
 
@@ -441,10 +524,7 @@ function Advance({
 
 /** ISO -> value usable by <input type="datetime-local">. */
 function toLocalInput(iso: string | null): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return isoToEasternLocal(iso);
 }
 
 
@@ -465,10 +545,12 @@ function StandardPanel({
   reportedHours,
   credential,
   docLinks,
+  hoursProof,
   verifs,
   membership,
 }: {
   id: string;
+  hoursProof: { name: string; url: string }[];
   approved: boolean;
   hours: number | null;
   reportedHours: number | null;
@@ -541,6 +623,20 @@ function StandardPanel({
         </label>
         <button className="rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-medium hover:bg-stone-50">Save</button>
       </form>
+      <div className="text-[11px] text-stone-500 -mt-2">
+        {hoursProof.length === 0 ? (
+          <span className="text-stone-400">No proof of hours uploaded yet</span>
+        ) : (
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            <span>Proof of hours:</span>
+            {hoursProof.map((h, i) => (
+              <a key={i} href={h.url} target="_blank" rel="noopener noreferrer" className="text-emerald-800 underline underline-offset-2">
+                {hoursProof.length > 1 ? `File ${i + 1}` : 'Open'} ↗
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
 
       {STANDARD_DOCS.map((d) => {
         const current = verifs.find((v) => v.type === d.type);

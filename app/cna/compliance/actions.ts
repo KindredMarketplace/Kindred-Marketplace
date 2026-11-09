@@ -27,11 +27,15 @@ const MIME_EXT: Record<string, string> = {
   'image/heif': 'heif',
 };
 const DOC_TYPE = {
+  hours: 'work_history',
   l2bg: 'bg_check',
   identity: 'id_verification',
   insurance: 'liability_insurance',
 } as const;
 type StandardDoc = keyof typeof DOC_TYPE;
+
+/** Statuses where Kindred has accepted the caregiver ("Accepted, onboarding" or live). */
+const ACCEPTED = new Set(['verifying', 'approved']);
 
 export type UploadResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -48,6 +52,19 @@ export async function uploadVerificationDocAction(formData: FormData): Promise<U
   const type = formData.get('type')?.toString() as StandardDoc | undefined;
   if (!type || !(type in DOC_TYPE)) return { ok: false, error: 'Unknown document type.' };
 
+  // Background check, ID and insurance come after Kindred accepts you, so
+  // nobody spends money on them before knowing they're in.
+  if (type !== 'hours') {
+    const { data: prof } = await supabase
+      .from('cna_profiles')
+      .select('application_status')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!ACCEPTED.has(prof?.application_status ?? '')) {
+      return { ok: false, error: 'This opens once Kindred accepts you. We’ll let you know.' };
+    }
+  }
+
   const file = formData.get('file');
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'Choose a file to upload.' };
   if (file.size > MAX_BYTES) return { ok: false, error: 'That file is over 10 MB. Try a smaller photo or PDF.' };
@@ -63,6 +80,7 @@ export async function uploadVerificationDocAction(formData: FormData): Promise<U
     }
     expiresAt = expiresRaw;
   }
+  if (type === 'hours') expiresAt = null;
   if (type === 'insurance' && !expiresAt) {
     return { ok: false, error: 'Add your policy’s expiration date so we know when to ask for a renewal.' };
   }
@@ -91,6 +109,11 @@ export async function uploadVerificationDocAction(formData: FormData): Promise<U
   if (docErr || !doc) {
     await supabase.storage.from(BUCKET).remove([path]);
     return { ok: false, error: 'We couldn’t save that document. Please try again.' };
+  }
+
+  if (type === 'hours') {
+    revalidatePath('/cna/compliance');
+    return { ok: true, message: 'Added. We’ll look at it when we review your hours.' };
   }
 
   const { data: existing } = await supabase

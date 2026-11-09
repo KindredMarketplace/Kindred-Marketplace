@@ -6,8 +6,8 @@
  * with rejected / waitlisted reachable from any human gate.
  *
  * The lightweight application comes first, then a human conversation, and ONLY
- * THEN the expensive verification (license, L2 background check, ID, CPR/BLS,
- * TB, two references). Cheap filters first, costly ones last.
+ * THEN, once accepted (verifying = "Accepted · onboarding"), the costly part:
+ * Level 2 background check, ID and liability insurance. Cheap filters first.
  */
 
 export type AppStage =
@@ -23,7 +23,7 @@ export const STAGE_LABEL: Record<AppStage, string> = {
   incomplete: 'Draft (not submitted)',
   submitted: 'New — needs screen',
   interviewing: 'Interview',
-  verifying: 'Verification',
+  verifying: 'Accepted · onboarding',
   approved: 'Approved',
   rejected: 'Declined',
   waitlisted: 'Waitlisted',
@@ -32,8 +32,8 @@ export const STAGE_LABEL: Record<AppStage, string> = {
 export const STAGE_BLURB: Record<AppStage, string> = {
   incomplete: 'Started the application but has not submitted it yet.',
   submitted: 'Read the application. Decide whether they earn a conversation.',
-  interviewing: 'The customer-discovery-style conversation. The character read.',
-  verifying: 'They passed the interview — now run license, L2 background, ID, CPR/BLS, TB, and two references.',
+  interviewing: 'Send the booking link, hold the conversation. The character read.',
+  verifying: 'Accepted. They now upload their Level 2 background check, ID and liability insurance; verify each, then publish.',
   approved: 'Vetted and live in Browse. Families can find them.',
   rejected: 'Declined at a human gate.',
   waitlisted: 'Strong, but not onboarding right now.',

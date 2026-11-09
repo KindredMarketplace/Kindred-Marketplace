@@ -13,6 +13,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import type { AppStage } from './stages';
+import { easternLocalToIso } from '@/lib/interview';
 
 const VALID_TARGETS: AppStage[] = [
   'submitted',
@@ -78,7 +79,8 @@ export async function updateApplicationAction(formData: FormData) {
   const patch: Record<string, unknown> = { application_status: nextStatus };
 
   if (interviewAtRaw) {
-    patch.interview_at = new Date(interviewAtRaw).toISOString();
+    const iso = easternLocalToIso(interviewAtRaw);
+    if (iso) patch.interview_at = iso;
   }
   if (typeof reason === 'string') {
     patch.application_decline_reason = reason.trim() || null;

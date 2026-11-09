@@ -16,6 +16,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { formatCents } from '@/lib/utils/money';
 import { AvailabilityToggle } from '@/components/cna/AvailabilityToggle';
+import { getBookingUrl, bookingLink } from '@/lib/interview';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,13 +29,18 @@ export default async function CnaDashboardPage() {
   if (!user) redirect('/login');
 
   const [userRes, profileRes] = await Promise.all([
-    supabase.from('users').select('full_name').eq('id', user.id).single(),
+    supabase.from('users').select('full_name, email').eq('id', user.id).single(),
     supabase.from('cna_profiles').select('*').eq('user_id', user.id).maybeSingle(),
   ]);
 
   const me = userRes.data;
   const profile = profileRes.data;
   const firstName = (profile?.display_name || me?.full_name || 'there').split(' ')[0];
+  const appStatus = profile?.application_status ?? null;
+  const bookingUrl = appStatus === 'interviewing' && !profile?.interview_at ? await getBookingUrl(supabase) : null;
+  const myBookingLink = bookingUrl
+    ? bookingLink(bookingUrl, [profile?.display_name, profile?.last_name].filter(Boolean).join(' ') || me?.full_name, me?.email)
+    : null;
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -106,28 +112,14 @@ export default async function CnaDashboardPage() {
         </div>
       </section>
 
-      {/* PROFILE COMPLETENESS BANNER — only when profile exists but isn't approved */}
-      {profile && profile.application_status !== 'approved' && (
+      {/* APPLICATION STATUS — where they are in submitted → interview → accepted → listed */}
+      {profile && appStatus && appStatus !== 'approved' && (
         <section className="mb-6 fade-up" style={{ animationDelay: '.04s' }}>
-          <div className="bg-gradient-to-br from-butter/30 to-coral/15 border border-coral/30 rounded-2xl p-5 flex items-start gap-4">
-            <div className="text-2xl">⚠️</div>
-            <div className="flex-1">
-              <div className="font-display text-lg font-medium mb-1">
-                Families can&rsquo;t see you yet
-              </div>
-              <p className="text-sm text-ink/75 leading-relaxed mb-3">
-                Kindred lists a caregiver after a short conversation with us and once your documents are
-                verified: Level 2 background check, photo ID and your own liability insurance. Upload them
-                on your Credentials page and we&rsquo;ll update you as each one is reviewed.
-              </p>
-              <Link
-                href="/cna/compliance"
-                className="inline-block bg-coral text-cream px-5 py-2.5 rounded-full text-sm font-medium hover:bg-inkdark transition"
-              >
-                Upload documents →
-              </Link>
-            </div>
-          </div>
+          <ApplicationStatusCard
+            status={appStatus}
+            interviewAt={profile.interview_at ?? null}
+            bookingLink={myBookingLink}
+          />
         </section>
       )}
 
@@ -377,4 +369,118 @@ export default async function CnaDashboardPage() {
       </section>
     </main>
   );
+}
+
+function ApplicationStatusCard({
+  status,
+  interviewAt,
+  bookingLink,
+}: {
+  status: string;
+  interviewAt: string | null;
+  bookingLink: string | null;
+}) {
+  const btn =
+    'inline-block bg-deepteal text-cream px-5 py-2.5 rounded-full text-sm font-medium hover:bg-inkdark transition';
+  const shell = 'rounded-2xl p-5 flex items-start gap-4 border';
+
+  if (status === 'submitted' || status === 'incomplete') {
+    return (
+      <div className={`${shell} bg-white border-ink/10`}>
+        <div className="text-2xl" aria-hidden="true">📬</div>
+        <div className="flex-1">
+          <div className="font-display text-lg font-medium mb-1">Your application is in</div>
+          <p className="text-sm text-ink/70 leading-relaxed mb-3">
+            We&rsquo;re reading it now. If it feels like a fit, we&rsquo;ll invite you to a short conversation.
+            Nothing else is needed from you yet, but you can add more proof of your hours any time.
+          </p>
+          <Link href="/cna/compliance" className="text-sm text-deepteal hover:text-coral font-medium">
+            Add proof of hours →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'interviewing') {
+    const when = interviewAt
+      ? new Date(interviewAt).toLocaleString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit',
+          timeZone: 'America/New_York',
+        })
+      : null;
+    return (
+      <div className={`${shell} bg-gradient-to-br from-sky/15 to-sage/20 border-teal/30`}>
+        <div className="text-2xl" aria-hidden="true">💬</div>
+        <div className="flex-1">
+          <div className="font-display text-lg font-medium mb-1">
+            {when ? 'Your interview is booked' : 'We’d love to talk with you'}
+          </div>
+          <p className="text-sm text-ink/70 leading-relaxed mb-3">
+            {when
+              ? `${when} (Eastern). A relaxed conversation, about 20 to 30 minutes.`
+              : 'Pick a time that works for you. It’s a relaxed conversation, about 20 to 30 minutes.'}
+          </p>
+          {!when && bookingLink && (
+            <a href={bookingLink} target="_blank" rel="noopener noreferrer" className={btn}>
+              Book your interview ↗
+            </a>
+          )}
+          {!when && !bookingLink && (
+            <p className="text-sm text-ink/60">Watch your email: we&rsquo;ll send you times to choose from.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'verifying') {
+    return (
+      <div className={`${shell} bg-gradient-to-br from-butter/40 to-sage/25 border-sage/50`}>
+        <div className="text-2xl" aria-hidden="true">🎉</div>
+        <div className="flex-1">
+          <div className="font-display text-lg font-medium mb-1">You&rsquo;re in. Let&rsquo;s get you listed.</div>
+          <p className="text-sm text-ink/70 leading-relaxed mb-3">
+            Upload your Level 2 background check, a photo ID and your liability insurance. Families can
+            find you as soon as all three are verified.
+          </p>
+          <Link href="/cna/compliance" className={btn}>
+            Upload documents →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'waitlisted') {
+    return (
+      <div className={`${shell} bg-white border-ink/10`}>
+        <div className="text-2xl" aria-hidden="true">🌱</div>
+        <div className="flex-1">
+          <div className="font-display text-lg font-medium mb-1">You&rsquo;re on our waitlist</div>
+          <p className="text-sm text-ink/70 leading-relaxed">
+            We&rsquo;d like to work with you, and we&rsquo;re not adding caregivers in your area just yet.
+            We&rsquo;ll reach out as soon as we are.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'rejected') {
+    return (
+      <div className={`${shell} bg-white border-ink/10`}>
+        <div className="text-2xl" aria-hidden="true">🤍</div>
+        <div className="flex-1">
+          <div className="font-display text-lg font-medium mb-1">Thank you for applying</div>
+          <p className="text-sm text-ink/70 leading-relaxed">
+            We&rsquo;re not moving forward with your application right now. If you have questions,
+            we&rsquo;re happy to talk: reach us through Help.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }

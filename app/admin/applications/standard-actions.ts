@@ -157,3 +157,33 @@ export async function compMembershipAction(formData: FormData) {
   });
   revalidatePath(`/admin/applications/${parsed.data.user_id}`);
 }
+
+/**
+ * Save the interview booking link (Calendly or similar) used in interview
+ * invites. Stored in platform_settings so it can change without a redeploy.
+ */
+export async function setBookingUrlAction(formData: FormData) {
+  const { adminId } = await requireAdmin();
+  const raw = formData.get('booking_url')?.toString().trim() ?? '';
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return;
+  }
+  if (url.protocol !== 'https:') return;
+  url.search = '';
+  url.hash = '';
+  const svc = createServiceClient();
+  await svc
+    .from('platform_settings')
+    .upsert({ key: 'interview_booking_url', value: url.toString(), updated_at: new Date().toISOString() });
+  await svc.from('audit_log').insert({
+    user_id: adminId,
+    action: 'update',
+    resource_type: 'platform_settings',
+    context: { key: 'interview_booking_url', url: url.toString() },
+  });
+  revalidatePath('/admin/applications', 'layout');
+  revalidatePath('/cna/dashboard');
+}

@@ -27,8 +27,11 @@ export function StandardDocUpload({
   expiresAt,
   askExpiry,
   expiryRequired,
+  locked,
+  badgeOverride,
+  footnote,
 }: {
-  type: 'l2bg' | 'identity' | 'insurance';
+  type: 'hours' | 'l2bg' | 'identity' | 'insurance';
   title: string;
   help: string;
   icon: string;
@@ -36,11 +39,15 @@ export function StandardDocUpload({
   expiresAt: string | null;
   askExpiry: boolean;
   expiryRequired?: boolean;
+  /** Not available yet (opens after Kindred accepts the caregiver). */
+  locked?: boolean;
+  badgeOverride?: { label: string; cls: string };
+  footnote?: React.ReactNode;
 }) {
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const badge = BADGE[status];
+  const badge = locked ? { label: 'After you’re accepted', cls: 'bg-ink/5 text-ink/50' } : badgeOverride ?? BADGE[status];
 
   function submit(fd: FormData) {
     setMsg(null);
@@ -56,7 +63,7 @@ export function StandardDocUpload({
   }
 
   return (
-    <div className="bg-white border border-ink/10 rounded-2xl p-5 flex flex-col">
+    <div className={`bg-white border border-ink/10 rounded-2xl p-5 flex flex-col ${locked ? 'opacity-70' : ''}`}>
       <div className="flex items-start gap-4">
         <div className="w-12 h-12 rounded-2xl bg-sage/20 flex items-center justify-center text-2xl shrink-0" aria-hidden="true">
           {icon}
@@ -75,6 +82,13 @@ export function StandardDocUpload({
         </div>
       </div>
 
+      {footnote && <div className="mt-3 text-xs text-ink/60">{footnote}</div>}
+
+      {locked ? (
+        <p className="mt-4 text-xs text-ink/55 leading-relaxed">
+          🔒 Opens once Kindred accepts you, so you never pay for this before you know you&apos;re in.
+        </p>
+      ) : (
       <form ref={formRef} action={submit} className="mt-4 space-y-3">
           <input type="hidden" name="type" value={type} />
           <input
@@ -111,6 +125,7 @@ export function StandardDocUpload({
             </p>
           )}
         </form>
+      )}
     </div>
   );
 }
