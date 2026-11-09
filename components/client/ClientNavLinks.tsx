@@ -13,6 +13,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { PortalMobileMenu } from '@/components/PortalMobileMenu';
 
 const LINKS = [
   { href: '/client/dashboard', label: 'Dashboard' },
@@ -32,7 +33,7 @@ export function ClientNavLinks({ unreadCount = 0 }: { unreadCount?: number }) {
   }
 
   return (
-    <nav className="flex items-center gap-1 flex-wrap">
+    <nav className="hidden xl:flex items-center gap-1">
       {LINKS.map((link) => {
         const active = isActive(link.href);
         const isMessages = link.href === '/client/messages';
@@ -42,8 +43,8 @@ export function ClientNavLinks({ unreadCount = 0 }: { unreadCount?: number }) {
             href={link.href}
             className={
               active
-                ? 'px-3 py-2 text-sm nav-active inline-flex items-center gap-1.5'
-                : 'px-3 py-2 text-sm hover:text-coral transition inline-flex items-center gap-1.5'
+                ? 'px-2 2xl:px-3 py-2 text-sm whitespace-nowrap nav-active inline-flex items-center gap-1.5'
+                : 'px-2 2xl:px-3 py-2 text-sm whitespace-nowrap hover:text-coral transition inline-flex items-center gap-1.5'
             }
           >
             {link.label}
@@ -56,5 +57,17 @@ export function ClientNavLinks({ unreadCount = 0 }: { unreadCount?: number }) {
         );
       })}
     </nav>
+  );
+}
+
+/** Phone / small-screen version of the same links (☰ menu). */
+export function ClientMobileMenu({ unreadCount = 0 }: { unreadCount?: number }) {
+  return (
+    <PortalMobileMenu
+      links={[
+        ...LINKS.map((l) => ({ ...l, badge: l.href === '/client/messages' ? unreadCount : undefined })),
+        { href: '/client/post-job', label: '+ Post a job', accent: true },
+      ]}
+    />
   );
 }

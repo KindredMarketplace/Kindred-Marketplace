@@ -15,7 +15,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logoutAction } from '@/app/(auth)/actions';
 import { KindredMark } from '@/components/KindredMark';
 import { SiteFooter } from '@/components/SiteFooter';
-import { CnaNavLinks } from '@/components/cna/CnaNavLinks';
+import { CnaNavLinks, CnaMobileMenu } from '@/components/cna/CnaNavLinks';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { loadUnreadTotal } from '@/lib/messaging';
 import { InboxRealtimeRefresh } from '@/components/messaging/InboxRealtimeRefresh';
@@ -99,32 +99,33 @@ export default async function CnaLayout({ children }: { children: React.ReactNod
 
       {/* MAIN NAV */}
       <header className="bg-cream/90 backdrop-blur-md border-b border-ink/10 sticky top-0 z-40">
-        <div className="max-w-kindred mx-auto px-6 py-4 flex items-center justify-between gap-6">
-          <Link href="/cna/dashboard" className="flex items-center gap-2.5">
+        <div className="max-w-kindred mx-auto px-4 sm:px-6 py-3 xl:py-4 flex items-center justify-between gap-4 xl:gap-6">
+          <Link href="/cna/dashboard" className="flex items-center gap-2.5 shrink-0">
             <KindredMark size={40} />
             <span className="font-display text-2xl font-medium tracking-tight">Kindred</span>
-            <span className="hidden md:inline text-xs font-mono text-ink/50 ml-1 mt-2">
+            <span className="hidden 2xl:inline text-xs font-mono text-ink/50 ml-1 mt-2">
               for caregivers
             </span>
           </Link>
 
           <CnaNavLinks unreadCount={unreadCount} />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/cna/jobs"
-              className="inline-flex items-center bg-ink text-cream px-4 py-2 rounded-full text-sm hover:bg-coral transition"
+              className="inline-flex items-center whitespace-nowrap bg-ink text-cream px-4 py-2 rounded-full text-sm hover:bg-coral transition"
             >
               Find work
             </Link>
-            <form action={logoutAction}>
+            <form action={logoutAction} className="hidden xl:block">
               <button
                 type="submit"
-                className="inline-flex items-center border border-ink/15 px-3 py-2 rounded-full text-sm hover:bg-mist transition"
+                className="inline-flex items-center whitespace-nowrap border border-ink/15 px-3 py-2 rounded-full text-sm hover:bg-mist transition"
               >
                 Log out
               </button>
             </form>
+            <CnaMobileMenu unreadCount={unreadCount} logoutAction={logoutAction} />
           </div>
         </div>
       </header>

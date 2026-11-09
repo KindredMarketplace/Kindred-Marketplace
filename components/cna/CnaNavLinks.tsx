@@ -13,6 +13,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { PortalMobileMenu } from '@/components/PortalMobileMenu';
 
 const LINKS = [
   { href: '/cna/dashboard', label: 'Dashboard' },
@@ -31,7 +32,7 @@ export function CnaNavLinks({ unreadCount = 0 }: { unreadCount?: number }) {
   }
 
   return (
-    <nav className="flex items-center gap-1 flex-wrap">
+    <nav className="hidden xl:flex items-center gap-1">
       {LINKS.map((link) => {
         const active = isActive(link.href);
         const isMessages = link.href === '/cna/messages';
@@ -41,8 +42,8 @@ export function CnaNavLinks({ unreadCount = 0 }: { unreadCount?: number }) {
             href={link.href}
             className={
               active
-                ? 'px-3 py-2 text-sm nav-active inline-flex items-center gap-1.5'
-                : 'px-3 py-2 text-sm hover:text-coral transition inline-flex items-center gap-1.5'
+                ? 'px-2 2xl:px-3 py-2 text-sm whitespace-nowrap nav-active inline-flex items-center gap-1.5'
+                : 'px-2 2xl:px-3 py-2 text-sm whitespace-nowrap hover:text-coral transition inline-flex items-center gap-1.5'
             }
           >
             {link.label}
@@ -56,7 +57,7 @@ export function CnaNavLinks({ unreadCount = 0 }: { unreadCount?: number }) {
       })}
       <Link
         href="/cna/get-insured"
-        className="nav-insure px-3 py-1.5 ml-1 rounded-full text-xs font-medium transition"
+        className="nav-insure whitespace-nowrap px-3 py-1.5 ml-1 rounded-full text-xs font-medium transition"
       >
         🛡️ Get insured
       </Link>
@@ -64,12 +65,32 @@ export function CnaNavLinks({ unreadCount = 0 }: { unreadCount?: number }) {
         href="/cna/resources"
         className={
           isActive('/cna/resources')
-            ? 'px-3 py-2 text-sm nav-active'
-            : 'px-3 py-2 text-sm hover:text-coral transition'
+            ? 'px-2 2xl:px-3 py-2 text-sm whitespace-nowrap nav-active'
+            : 'px-2 2xl:px-3 py-2 text-sm whitespace-nowrap hover:text-coral transition'
         }
       >
         Resources
       </Link>
     </nav>
+  );
+}
+
+/** Phone / small-screen version of the same links (☰ menu). */
+export function CnaMobileMenu({
+  unreadCount = 0,
+  logoutAction,
+}: {
+  unreadCount?: number;
+  logoutAction: () => Promise<void>;
+}) {
+  return (
+    <PortalMobileMenu
+      links={[
+        ...LINKS.map((l) => ({ ...l, badge: l.href === '/cna/messages' ? unreadCount : undefined })),
+        { href: '/cna/resources', label: 'Resources' },
+        { href: '/cna/get-insured', label: '🛡️ Get insured', accent: true },
+      ]}
+      logoutAction={logoutAction}
+    />
   );
 }

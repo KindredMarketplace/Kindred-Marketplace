@@ -20,7 +20,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logoutAction } from '@/app/(auth)/actions';
 import { KindredMark } from '@/components/KindredMark';
 import { SiteFooter } from '@/components/SiteFooter';
-import { ClientNavLinks } from '@/components/client/ClientNavLinks';
+import { ClientNavLinks, ClientMobileMenu } from '@/components/client/ClientNavLinks';
 import { ClientProfileMenu } from '@/components/client/ClientProfileMenu';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { loadUnreadTotal } from '@/lib/messaging';
@@ -129,27 +129,28 @@ export default async function ClientLayout({ children }: { children: React.React
 
       {/* MAIN NAV */}
       <header className="bg-cream/90 backdrop-blur-md border-b border-ink/10 sticky top-0 z-40">
-        <div className="max-w-kindred mx-auto px-6 py-4 flex items-center justify-between gap-6">
-          <Link href="/client/dashboard" className="flex items-center gap-2.5">
+        <div className="max-w-kindred mx-auto px-4 sm:px-6 py-3 xl:py-4 flex items-center justify-between gap-4 xl:gap-6">
+          <Link href="/client/dashboard" className="flex items-center gap-2.5 shrink-0">
             <KindredMark size={40} />
             <span className="font-display text-2xl font-medium tracking-tight">Kindred</span>
           </Link>
 
           <ClientNavLinks unreadCount={unreadCount} />
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/client/browse"
-              className="hidden md:inline-flex items-center px-4 py-2 text-sm border border-ink/15 rounded-full hover:bg-mist transition"
+              className="hidden xl:inline-flex items-center whitespace-nowrap px-4 py-2 text-sm border border-ink/15 rounded-full hover:bg-mist transition"
             >
               Find a caregiver
             </Link>
             <Link
               href="/client/post-job"
-              className="inline-flex items-center bg-ink text-cream px-4 py-2 rounded-full text-sm hover:bg-coral transition"
+              className="inline-flex items-center whitespace-nowrap bg-ink text-cream px-4 py-2 rounded-full text-sm hover:bg-coral transition"
             >
               + Post a job
             </Link>
+            <ClientMobileMenu unreadCount={unreadCount} />
           </div>
         </div>
       </header>
