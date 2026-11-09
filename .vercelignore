@@ -1,11 +1,12 @@
 # Never upload local secrets or non-app folders to Vercel.
+# Leading "/" = only the top-level folder (e.g. /supabase is the migrations
+# folder; lib/supabase is app code and MUST be uploaded).
 .env
 .env.*
 !.env.example
-SECRETS.txt
-_archive
-scripts
-docs
-supabase
-*.md
-!README.md
+/SECRETS.txt
+/_archive
+/scripts
+/docs
+/supabase
+/*.md
