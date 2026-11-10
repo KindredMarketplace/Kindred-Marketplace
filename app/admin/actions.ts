@@ -65,8 +65,8 @@ export async function startImpersonationAction(formData: FormData) {
     throw new Error('Target user not found');
   }
 
-  if (target.role !== 'client' && target.role !== 'cna' && target.role !== 'business') {
-    throw new Error('Can only impersonate client, cna, or business roles');
+  if (target.role !== 'client' && target.role !== 'cna') {
+    throw new Error('Can only view as a family or a caregiver');
   }
 
   // Log it (RLS allows admins to insert their own log rows)
@@ -100,8 +100,6 @@ export async function startImpersonationAction(formData: FormData) {
   switch (target.role) {
     case 'cna':
       redirect('/cna/dashboard');
-    case 'business':
-      redirect('/business/dashboard');
     case 'client':
     default:
       redirect('/client/dashboard');

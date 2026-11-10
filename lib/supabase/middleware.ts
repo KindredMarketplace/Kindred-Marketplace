@@ -122,11 +122,36 @@ export async function updateSession(request: NextRequest) {
   const requiredRole = pathnameRequiresRole(pathname);
   if (!requiredRole) return supabaseResponse;
 
+  const viewingAs = !!request.cookies.get(VIEW_AS_TARGET)?.value;
+
+  // Admins can always get back to /admin. Arriving there ends "View as".
+  if (requiredRole === 'admin' && viewingAs && (await isRealAdmin(supabase, user.id))) {
+    supabaseResponse.cookies.delete(VIEW_AS_ROLE);
+    supabaseResponse.cookies.delete(VIEW_AS_TARGET);
+    return supabaseResponse;
+  }
+
   const effectiveRole = await getEffectiveRole(supabase, user.id, request);
 
   if (!effectiveRole) {
     // No user row yet — odd state, send to login
     return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // "View as" is read-only: refuse form posts / server actions from the
+  // portals while an admin is viewing as someone, so nothing gets saved
+  // under the admin's account inside another person's view.
+  if (
+    viewingAs &&
+    request.method === 'POST' &&
+    (requiredRole === 'client' || requiredRole === 'cna') &&
+    effectiveRole === requiredRole &&
+    (await isRealAdmin(supabase, user.id))
+  ) {
+    return new NextResponse('Viewing as someone is read-only. Go back to admin to make changes.', {
+      status: 403,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+    });
   }
 
   // Admin can access /admin/*; they need impersonation to access the role portals
@@ -140,6 +165,17 @@ export async function updateSession(request: NextRequest) {
 
   // Wrong portal — send them home
   return NextResponse.redirect(new URL(roleHomePath(effectiveRole), request.url));
+}
+
+const VIEW_AS_ROLE = 'kindred_impersonating_role';
+const VIEW_AS_TARGET = 'kindred_impersonating_target_user_id';
+
+async function isRealAdmin(
+  supabase: ReturnType<typeof createServerClient<Database>>,
+  userId: string
+): Promise<boolean> {
+  const { data } = await supabase.from('users').select('role, status').eq('id', userId).single();
+  return data?.role === 'admin' && data?.status === 'active';
 }
 
 /**

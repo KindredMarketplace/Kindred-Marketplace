@@ -12,8 +12,8 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { StandardDocUpload } from '@/components/cna/StandardDocUpload';
+import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,10 +28,7 @@ const CREDENTIAL_LABEL: Record<string, string> = {
 };
 
 export default async function CnaCompliancePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getViewer();
   if (!user) redirect('/login?next=/cna/compliance');
 
   const [{ data: profile }, { data: verifs }, { data: hoursDocs }] = await Promise.all([

@@ -13,7 +13,7 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,10 +26,7 @@ const PLANNED_GUIDES = [
 ];
 
 export default async function CnaResourcesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getViewer();
   if (!user) redirect('/login');
 
   return (

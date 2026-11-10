@@ -12,7 +12,8 @@
 
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { getMyAccess, getPlanForRole, isStripeConfigured } from '@/lib/membership';
+import { getViewer } from '@/lib/viewer';
+import { getMyAccess, getAccessFor, getPlanForRole, isStripeConfigured } from '@/lib/membership';
 import { dollars, formatLongDate, statusLabel, KINDRED_STANDARD } from '@/lib/membership-shared';
 
 const NOTICES: Record<string, { tone: 'good' | 'warn'; text: string }> = {
@@ -26,13 +27,10 @@ const NOTICES: Record<string, { tone: 'good' | 'warn'; text: string }> = {
 };
 
 export async function MembershipPage({ role, status }: { role: 'client' | 'cna'; status?: string }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, viewingAs } = await getViewer();
 
   const [access, plan, standard] = await Promise.all([
-    getMyAccess(supabase),
+    viewingAs && user ? getAccessFor(supabase, user.id) : getMyAccess(supabase),
     getPlanForRole(supabase, role),
     role === 'cna' && user ? loadStandardProgress(supabase, user.id) : Promise.resolve(null),
   ]);

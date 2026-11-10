@@ -22,6 +22,7 @@ import {
   relTime,
   type AppStage,
 } from './stages';
+import { AdminHeader } from '../AdminHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,21 +78,7 @@ export default async function ApplicationsQueuePage() {
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Header */}
-      <header className="bg-stone-900 text-white">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/admin" className="font-display text-xl">
-              Kindred <span className="text-stone-400">/ Applications</span>
-            </Link>
-            <span className="rounded-full bg-coral/30 px-3 py-0.5 text-xs font-medium text-coral">
-              Staff only
-            </span>
-          </div>
-          <Link href="/admin" className="text-sm text-stone-300 hover:text-white">
-            ← Back to admin
-          </Link>
-        </div>
-      </header>
+      <AdminHeader section="Applications" />
 
       <main className="max-w-7xl mx-auto px-6 py-10">
         <div className="mb-8">

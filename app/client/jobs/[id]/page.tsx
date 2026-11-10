@@ -15,13 +15,13 @@
 
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
 import { formatCents } from '@/lib/utils/money';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { ApplicantDecisionButtons } from '@/components/client/ApplicantDecisionButtons';
 import { CloseJobButton } from '@/components/client/CloseJobButton';
 import { StartMessageModal } from '@/components/client/StartMessageModal';
 import { normalizePair } from '@/lib/messaging';
+import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,11 +50,7 @@ function payRange(min: number | null, max: number | null): string {
 
 export default async function ClientJobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getViewer();
   if (!user) redirect('/login');
 
   const { data: job } = await supabase

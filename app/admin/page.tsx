@@ -1,363 +1,275 @@
 /**
- * /admin — admin home page.
+ * /admin — overview.
  *
- * Server component. Lists every user grouped by role with "View as" buttons.
- * Also shows recent impersonation log entries for self-auditing.
+ *   - People counts (families, caregivers, admins); each card opens the list.
+ *   - Membership + money: who's paying, comped, founding slots, and the
+ *     monthly revenue those memberships add up to. Computed from Kindred's
+ *     own records (memberships + access_plans); Stripe stays the source of
+ *     truth for actual payouts once live payments are on.
+ *   - Work queues: applications, documents to review, leads.
+ *   - Recently joined + your recent "View as" history.
  *
- * Access is gated by middleware (only role='admin' can reach this route)
- * AND by the in-page requireAdmin check (defense in depth).
+ * Facilities are gone from the product (in-home care only); the old business
+ * account isn't counted.
  */
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { startImpersonationAction } from './actions';
-import { logoutAction } from '../(auth)/actions';
+import { isStripeConfigured } from '@/lib/membership';
+import { AdminHeader, StatusPill } from './AdminHeader';
 
-export const dynamic = 'force-dynamic'; // never cache — admin data should be live
+export const dynamic = 'force-dynamic';
 
-type UserRow = {
-  id: string;
-  email: string;
-  full_name: string | null;
-  role: 'client' | 'cna' | 'business' | 'admin';
-  status: 'pending' | 'active' | 'suspended' | 'deleted';
-  created_at: string;
-};
+type Role = 'client' | 'cna' | 'admin';
 
-type ImpersonationLogRow = {
-  id: string;
-  impersonated_user_id: string;
-  impersonated_role: string;
-  reason: string | null;
-  started_at: string;
-  ended_at: string | null;
-};
+const usd = (cents: number) =>
+  (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
 export default async function AdminPage() {
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Verify admin
   const { data: me } = await supabase
     .from('users')
     .select('role, status, full_name, email')
     .eq('id', user.id)
     .single();
-  if (me?.role !== 'admin' || me?.status !== 'active') {
-    redirect('/login?error=not_authorized');
-  }
+  if (me?.role !== 'admin' || me?.status !== 'active') redirect('/login?error=not_authorized');
 
-  // Pull users (RLS allows admins to read all)
-  const { data: users } = await supabase
-    .from('users')
-    .select('id, email, full_name, role, status, created_at')
-    .neq('id', user.id) // exclude self
-    .order('created_at', { ascending: false });
+  const [
+    { data: users },
+    { data: memberships },
+    { data: plans },
+    { data: settings },
+    { data: appRows },
+    { data: pendingDocs },
+    { data: leadRows },
+    { data: logs },
+  ] = await Promise.all([
+    supabase.from('users').select('id, email, full_name, role, status, created_at').neq('role', 'business').order('created_at', { ascending: false }),
+    supabase.from('memberships').select('user_id, role, status, founding, startup_fee_waived, startup_fee_paid_at, stripe_subscription_id'),
+    supabase.from('access_plans').select('role, startup_fee_cents, monthly_cents').eq('active', true),
+    supabase.from('platform_settings').select('value').eq('key', 'founding_caregiver_cap').maybeSingle(),
+    supabase.from('cna_profiles').select('application_status'),
+    supabase.from('cna_verifications').select('id').eq('status', 'pending'),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('leads') as any).select('status'),
+    supabase
+      .from('admin_impersonation_log')
+      .select('id, impersonated_user_id, impersonated_role, started_at')
+      .eq('admin_user_id', user.id)
+      .order('started_at', { ascending: false })
+      .limit(8),
+  ]);
 
-  const grouped: Record<UserRow['role'], UserRow[]> = {
-    client: [],
-    cna: [],
-    business: [],
-    admin: [],
+  const people = (users ?? []) as { id: string; email: string; full_name: string | null; role: Role; status: string; created_at: string }[];
+  const count = (r: Role) => people.filter((p) => p.role === r).length;
+  const nameById = new Map(people.map((p) => [p.id, p.full_name || p.email]));
+
+  // ---- membership + money
+  const ms = memberships ?? [];
+  const planFor = (role: string) => (plans ?? []).find((p) => p.role === role);
+  const side = (role: 'cna' | 'client') => {
+    const rows = ms.filter((m) => m.role === role);
+    const paying = rows.filter((m) => m.status === 'active' || m.status === 'past_due');
+    return {
+      paying: paying.length,
+      pastDue: rows.filter((m) => m.status === 'past_due').length,
+      comped: rows.filter((m) => m.status === 'comped').length,
+      canceled: rows.filter((m) => m.status === 'canceled').length,
+      monthlyCents: rows.filter((m) => m.status === 'active').length * (planFor(role)?.monthly_cents ?? 0),
+      startupCents: rows.filter((m) => m.startup_fee_paid_at && !m.startup_fee_waived).length * (planFor(role)?.startup_fee_cents ?? 0),
+    };
   };
-  for (const u of (users ?? []) as UserRow[]) {
-    grouped[u.role].push(u);
-  }
+  const cg = side('cna');
+  const fam = side('client');
+  const foundingCap = settings?.value != null ? Number(settings.value) : 25;
+  const foundingUsed = ms.filter((m) => m.founding && m.role === 'cna').length;
+  const stripeLive = isStripeConfigured();
 
-  // Pull recent impersonation logs (only for the current admin)
-  const { data: logs } = await supabase
-    .from('admin_impersonation_log')
-    .select('id, impersonated_user_id, impersonated_role, reason, started_at, ended_at')
-    .eq('admin_user_id', user.id)
-    .order('started_at', { ascending: false })
-    .limit(10);
-
-  // CNA application pipeline — count anyone awaiting a human decision.
-  const { data: appRows } = await supabase
-    .from('cna_profiles')
-    .select('application_status');
-  const pendingApplications = (appRows ?? []).filter((r) =>
-    ['submitted', 'interviewing', 'verifying'].includes(
-      (r as { application_status: string | null }).application_status ?? '',
-    ),
-  ).length;
-
-  // Funnel leads from the public landing page awaiting outreach.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: leadRows } = await (supabase.from('leads') as any).select('status');
-  const newLeads = (leadRows ?? []).filter(
-    (r: { status: string | null }) => r.status === 'new',
-  ).length;
+  // ---- queues
+  const stages = (appRows ?? []).map((r) => r.application_status ?? '');
+  const newApps = stages.filter((s) => s === 'submitted').length;
+  const inInterview = stages.filter((s) => s === 'interviewing').length;
+  const onboarding = stages.filter((s) => s === 'verifying').length;
+  const listedish = stages.filter((s) => s === 'approved').length;
+  const docsToReview = (pendingDocs ?? []).length;
+  const newLeads = ((leadRows ?? []) as { status: string | null }[]).filter((r) => r.status === 'new').length;
 
   return (
     <div className="min-h-screen bg-stone-50">
-      {/* Header */}
-      <header className="bg-stone-900 text-white">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/admin" className="font-display text-xl">
-              Kindred <span className="text-stone-400">/ Admin</span>
-            </Link>
-            <span className="rounded-full bg-coral/30 px-3 py-0.5 text-xs font-medium text-coral">
-              Staff only
+      <AdminHeader section="Overview" email={me?.email} />
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="mb-6">
+          <h1 className="font-display text-3xl text-stone-900">Hi, {(me?.full_name || 'there').split(' ')[0]}</h1>
+          <p className="text-sm text-stone-600">Everything at a glance. Tap any card to open it.</p>
+        </div>
+
+        {/* People */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+          <StatCard href="/admin/people?role=client" label="Families" value={count('client')} accent="bg-sky" />
+          <StatCard href="/admin/people?role=cna" label="Caregivers" value={count('cna')} accent="bg-sage" sub={`${listedish} approved`} />
+          <StatCard href="/admin/people?role=admin" label="Admins" value={count('admin')} accent="bg-coral" />
+          <StatCard href="/admin/people/new" label="Add someone" value="+" accent="bg-stone-400" sub="Family or caregiver" />
+        </div>
+
+        {/* Money */}
+        <section className="mb-8">
+          <div className="flex flex-wrap items-end justify-between gap-2 mb-3">
+            <h2 className="font-display text-2xl text-stone-900">Memberships &amp; revenue</h2>
+            <span className={`text-xs rounded-full px-2.5 py-1 ${stripeLive ? 'bg-sage/25 text-stone-800' : 'bg-amber-100 text-amber-800'}`}>
+              {stripeLive ? 'Payments on' : 'Payments not live yet: nobody can be charged'}
             </span>
           </div>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-stone-400">{me?.email}</span>
-            <form action={logoutAction}>
-              <button
-                type="submit"
-                className="rounded-md border border-stone-700 px-3 py-1.5 text-stone-300 hover:bg-stone-800"
-              >
-                Log out
-              </button>
-            </form>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <Metric label="Monthly revenue (MRR)" value={usd(cg.monthlyCents + fam.monthlyCents)} sub={`${cg.paying + fam.paying} paying member${cg.paying + fam.paying === 1 ? '' : 's'}`} />
+            <Metric label="Startup fees collected" value={usd(cg.startupCents + fam.startupCents)} sub="As recorded by Kindred" />
+            <Metric label="Founding caregivers" value={`${foundingUsed} / ${foundingCap}`} sub={`${Math.max(0, foundingCap - foundingUsed)} free-year spots left`} />
+            <Metric label="Comped" value={String(cg.comped + fam.comped)} sub="Free access, not counted in revenue" />
           </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 py-10">
-        {/* Title */}
-        <div className="mb-8">
-          <h1 className="font-display text-3xl text-stone-900 mb-2">Admin dashboard</h1>
-          <p className="text-stone-600">
-            Welcome back, {me?.full_name || me?.email}. Pick a user below to walk the app
-            as them, or browse user lists to spot issues.
-          </p>
-        </div>
-
-        {/* Quick stats */}
-        <div className="grid sm:grid-cols-4 gap-4 mb-10">
-          <StatCard label="Clients" count={grouped.client.length} accent="bg-sky" />
-          <StatCard label="CNAs" count={grouped.cna.length} accent="bg-sage" />
-          <StatCard label="Facilities" count={grouped.business.length} accent="bg-teal" />
-          <StatCard label="Admins" count={grouped.admin.length + 1} accent="bg-coral" />
-        </div>
-
-        {/* CNA applications queue callout */}
-        <Link
-          href="/admin/applications"
-          className="group flex items-center justify-between gap-4 rounded-xl border border-stone-200 bg-white p-5 mb-10 hover:border-teal hover:shadow-sm transition"
-        >
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-teal" />
-              <span className="font-display text-lg text-stone-900">Caregiver applications</span>
-            </div>
-            <p className="text-sm text-stone-600 mt-1">
-              Review applicants, run interviews, and approve only the ones who earn it.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="rounded-full bg-teal/10 text-deepteal text-sm font-medium px-3 py-1">
-              {pendingApplications} awaiting review
-            </span>
-            <span className="text-stone-400 group-hover:text-teal transition">&rarr;</span>
-          </div>
-        </Link>
-
-        {/* Kindred Standard review queue */}
-        <Link
-          href="/admin/verifications"
-          className="group flex items-center justify-between gap-4 rounded-xl border border-stone-200 bg-white p-5 mb-10 hover:border-teal hover:shadow-sm transition"
-        >
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-sage" />
-              <span className="font-display text-lg text-stone-900">Document review</span>
-            </div>
-            <p className="text-sm text-stone-600 mt-1">
-              Background checks, IDs and insurance caregivers uploaded for the Kindred Standard.
-            </p>
-          </div>
-          <span className="text-stone-400 group-hover:text-teal transition">&rarr;</span>
-        </Link>
-
-        {/* Funnel leads callout */}
-        <Link
-          href="/admin/leads"
-          className="group flex items-center justify-between gap-4 rounded-xl border border-stone-200 bg-white p-5 mb-10 hover:border-coral hover:shadow-sm transition"
-        >
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-coral" />
-              <span className="font-display text-lg text-stone-900">Funnel leads</span>
-            </div>
-            <p className="text-sm text-stone-600 mt-1">
-              People who raised their hand on the landing page. Reach out and mark them contacted.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="rounded-full bg-coral/10 text-coral text-sm font-medium px-3 py-1">
-              {newLeads} new
-            </span>
-            <span className="text-stone-400 group-hover:text-coral transition">&rarr;</span>
-          </div>
-        </Link>
-
-        {/* User lists by role */}
-        <div className="space-y-10">
-          <RoleSection
-            title="Clients (families)"
-            description="Walk in as a family looking for care."
-            rows={grouped.client}
-            accent="border-sky"
-          />
-          <RoleSection
-            title="CNAs (caregivers)"
-            description="See the world from a caregiver's perspective."
-            rows={grouped.cna}
-            accent="border-sage"
-          />
-          <RoleSection
-            title="Businesses (facilities)"
-            description="Step into a facility's shoes."
-            rows={grouped.business}
-            accent="border-teal"
-          />
-        </div>
-
-        {/* Recent impersonation log */}
-        <section className="mt-12">
-          <h2 className="font-display text-2xl text-stone-900 mb-4">Your recent activity</h2>
-          {logs && logs.length > 0 ? (
-            <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-stone-50 text-stone-600 text-xs uppercase tracking-wider">
-                  <tr>
-                    <th className="text-left px-4 py-3">When</th>
-                    <th className="text-left px-4 py-3">Viewed as</th>
-                    <th className="text-left px-4 py-3">User</th>
-                    <th className="text-left px-4 py-3">Reason</th>
+          <div className="mt-3 rounded-xl border border-stone-200 bg-white overflow-x-auto">
+            <table className="w-full text-sm min-w-[520px]">
+              <thead className="bg-stone-50 text-stone-600 text-xs uppercase tracking-wider">
+                <tr>
+                  <th className="text-left px-4 py-2.5">Side</th>
+                  <th className="text-right px-4 py-2.5">Paying</th>
+                  <th className="text-right px-4 py-2.5">Past due</th>
+                  <th className="text-right px-4 py-2.5">Comped</th>
+                  <th className="text-right px-4 py-2.5">Canceled</th>
+                  <th className="text-right px-4 py-2.5">Monthly</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {[
+                  { name: 'Caregivers', s: cg },
+                  { name: 'Families', s: fam },
+                ].map(({ name, s }) => (
+                  <tr key={name}>
+                    <td className="px-4 py-2.5 text-stone-900">{name}</td>
+                    <td className="px-4 py-2.5 text-right">{s.paying}</td>
+                    <td className="px-4 py-2.5 text-right">{s.pastDue}</td>
+                    <td className="px-4 py-2.5 text-right">{s.comped}</td>
+                    <td className="px-4 py-2.5 text-right">{s.canceled}</td>
+                    <td className="px-4 py-2.5 text-right">{usd(s.monthlyCents)}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100">
-                  {(logs as ImpersonationLogRow[]).map((l) => (
-                    <tr key={l.id}>
-                      <td className="px-4 py-3 text-stone-700">
-                        {new Date(l.started_at).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="capitalize">{l.impersonated_role}</span>
-                      </td>
-                      <td className="px-4 py-3 text-stone-500 font-mono text-xs">
-                        {l.impersonated_user_id.slice(0, 8)}&hellip;
-                      </td>
-                      <td className="px-4 py-3 text-stone-600">{l.reason || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm text-stone-500">No impersonation history yet.</p>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-xs text-stone-500">
+            Revenue is memberships only: {usd(planFor('cna')?.startup_fee_cents ?? 0)} to start + {usd(planFor('cna')?.monthly_cents ?? 0)}/month per side.
+            Profit and costs (background checks, tools) come later, once there&rsquo;s real money to track.
+          </p>
         </section>
+
+        {/* Queues */}
+        <section className="mb-8">
+          <h2 className="font-display text-2xl text-stone-900 mb-3">To do</h2>
+          <div className="grid sm:grid-cols-3 gap-3 sm:gap-4">
+            <QueueCard
+              href="/admin/applications"
+              title="Caregiver applications"
+              dot="bg-teal"
+              lines={[`${newApps} new`, `${inInterview} in interview`, `${onboarding} onboarding`]}
+            />
+            <QueueCard href="/admin/verifications" title="Documents to review" dot="bg-sage" lines={[`${docsToReview} waiting`]} />
+            <QueueCard href="/admin/leads" title="Funnel leads" dot="bg-coral" lines={[`${newLeads} new`]} />
+          </div>
+        </section>
+
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Recently joined */}
+          <section>
+            <div className="flex items-end justify-between mb-3">
+              <h2 className="font-display text-2xl text-stone-900">Recently joined</h2>
+              <Link href="/admin/people" className="text-sm text-stone-500 hover:text-stone-900">Everyone →</Link>
+            </div>
+            <div className="rounded-xl border border-stone-200 bg-white divide-y divide-stone-100">
+              {people.filter((p) => p.id !== user.id).slice(0, 6).map((p) => (
+                <Link key={p.id} href={`/admin/people/${p.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-stone-50">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-stone-900 truncate">{p.full_name || p.email}</div>
+                    <div className="text-xs text-stone-500">
+                      {p.role === 'cna' ? 'Caregiver' : p.role === 'client' ? 'Family' : 'Admin'} ·{' '}
+                      {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </div>
+                  </div>
+                  <StatusPill status={p.status} />
+                </Link>
+              ))}
+              {people.length <= 1 && <p className="px-4 py-6 text-sm text-stone-500">Nobody yet.</p>}
+            </div>
+          </section>
+
+          {/* View-as history */}
+          <section>
+            <h2 className="font-display text-2xl text-stone-900 mb-3">Your recent &ldquo;View as&rdquo;</h2>
+            {logs && logs.length > 0 ? (
+              <div className="rounded-xl border border-stone-200 bg-white divide-y divide-stone-100">
+                {logs.map((l) => (
+                  <div key={l.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                    <span className="text-stone-900 truncate">
+                      {nameById.get(l.impersonated_user_id) ?? 'Deleted account'}{' '}
+                      <span className="text-stone-500">({l.impersonated_role === 'cna' ? 'caregiver' : 'family'})</span>
+                    </span>
+                    <span className="text-xs text-stone-500 whitespace-nowrap">
+                      {new Date(l.started_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-stone-500">None yet. Open someone in People and tap &ldquo;View as them&rdquo;.</p>
+            )}
+          </section>
+        </div>
       </main>
     </div>
   );
 }
 
-function StatCard({
-  label,
-  count,
-  accent,
-}: {
-  label: string;
-  count: number;
-  accent: string;
-}) {
+function StatCard({ href, label, value, accent, sub }: { href: string; label: string; value: number | string; accent: string; sub?: string }) {
   return (
-    <div className="rounded-xl border border-stone-200 bg-white p-5">
+    <Link href={href} className="group rounded-xl border border-stone-200 bg-white p-4 sm:p-5 hover:border-stone-400 hover:shadow-sm transition">
       <div className="flex items-center gap-2 mb-2">
         <span className={`inline-block w-2 h-2 rounded-full ${accent}`} />
         <span className="text-xs uppercase tracking-wider text-stone-500">{label}</span>
+        <span className="ml-auto text-stone-300 group-hover:text-stone-600 transition">→</span>
       </div>
-      <div className="font-display text-3xl text-stone-900">{count}</div>
+      <div className="font-display text-3xl text-stone-900">{value}</div>
+      {sub && <div className="text-xs text-stone-500 mt-1">{sub}</div>}
+    </Link>
+  );
+}
+
+function Metric({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="rounded-xl border border-stone-200 bg-white p-4 sm:p-5">
+      <div className="text-xs uppercase tracking-wider text-stone-500 mb-2">{label}</div>
+      <div className="font-display text-3xl text-stone-900">{value}</div>
+      <div className="text-xs text-stone-500 mt-1">{sub}</div>
     </div>
   );
 }
 
-function RoleSection({
-  title,
-  description,
-  rows,
-  accent,
-}: {
-  title: string;
-  description: string;
-  rows: UserRow[];
-  accent: string;
-}) {
+function QueueCard({ href, title, dot, lines }: { href: string; title: string; dot: string; lines: string[] }) {
   return (
-    <section>
-      <div className={`mb-4 border-l-4 ${accent} pl-4`}>
-        <h2 className="font-display text-2xl text-stone-900">{title}</h2>
-        <p className="text-sm text-stone-600">{description}</p>
+    <Link href={href} className="group rounded-xl border border-stone-200 bg-white p-5 hover:border-stone-400 hover:shadow-sm transition">
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`inline-block w-2 h-2 rounded-full ${dot}`} />
+        <span className="font-display text-lg text-stone-900">{title}</span>
+        <span className="ml-auto text-stone-300 group-hover:text-stone-600 transition">→</span>
       </div>
-
-      {rows.length === 0 ? (
-        <p className="text-sm text-stone-500 italic">No users yet.</p>
-      ) : (
-        <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-stone-50 text-stone-600 text-xs uppercase tracking-wider">
-              <tr>
-                <th className="text-left px-4 py-3">Name</th>
-                <th className="text-left px-4 py-3">Email</th>
-                <th className="text-left px-4 py-3">Status</th>
-                <th className="text-left px-4 py-3">Joined</th>
-                <th className="text-right px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {rows.map((u) => (
-                <tr key={u.id}>
-                  <td className="px-4 py-3 text-stone-900">{u.full_name || '—'}</td>
-                  <td className="px-4 py-3 text-stone-700">{u.email}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={u.status} />
-                  </td>
-                  <td className="px-4 py-3 text-stone-500">
-                    {new Date(u.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <form action={startImpersonationAction} className="inline">
-                      <input type="hidden" name="target_user_id" value={u.id} />
-                      <input type="hidden" name="reason" value="Manual review" />
-                      <button
-                        type="submit"
-                        className="rounded-md bg-teal px-3 py-1.5 text-xs font-medium text-white hover:bg-teal/90"
-                      >
-                        View as
-                      </button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function StatusBadge({ status }: { status: UserRow['status'] }) {
-  const styles: Record<UserRow['status'], string> = {
-    active: 'bg-sage/20 text-stone-800',
-    pending: 'bg-stone-100 text-stone-600',
-    suspended: 'bg-coral/20 text-stone-800',
-    deleted: 'bg-stone-200 text-stone-500',
-  };
-  return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${styles[status]}`}>
-      {status}
-    </span>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-stone-600">
+        {lines.map((l) => (
+          <span key={l}>{l}</span>
+        ))}
+      </div>
+    </Link>
   );
 }

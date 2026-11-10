@@ -11,7 +11,6 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { logoutAction } from '@/app/(auth)/actions';
 import { KindredMark } from '@/components/KindredMark';
 import { SiteFooter } from '@/components/SiteFooter';
@@ -21,13 +20,10 @@ import { initials, avatarClass } from '@/lib/utils/avatar';
 import { loadUnreadTotal } from '@/lib/messaging';
 import { InboxRealtimeRefresh } from '@/components/messaging/InboxRealtimeRefresh';
 import { PresencePinger } from '@/components/messaging/PresencePinger';
+import { getViewer } from '@/lib/viewer';
 
 export default async function CnaLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, viewingAs } = await getViewer();
   if (!user) redirect('/login');
 
   // Pull the caregiver's display data for the shell + the unread message
@@ -47,6 +43,7 @@ export default async function CnaLayout({ children }: { children: React.ReactNod
 
   // One-time "You're in!" welcome after Kindred accepts them.
   const showWelcome =
+    !viewingAs &&
     !!profile &&
     (profile.application_status === 'verifying' || profile.application_status === 'approved') &&
     !profile.welcome_seen_at;

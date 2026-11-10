@@ -14,12 +14,12 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { JobFilterChips } from '@/components/cna/JobFilterChips';
 import { JobApplyModal } from '@/components/cna/JobApplyModal';
 import { formatCents } from '@/lib/utils/money';
 import { initials, avatarClass } from '@/lib/utils/avatar';
-import { getMyAccess } from '@/lib/membership';
+import { getMyAccess, getAccessFor } from '@/lib/membership';
+import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,10 +51,7 @@ function payRange(min: number | null, max: number | null): string {
 }
 
 export default async function CnaJobsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, viewingAs } = await getViewer();
   if (!user) redirect('/login');
 
   // Real open jobs, newest first. Read through browse_open_jobs(), which
@@ -62,7 +59,7 @@ export default async function CnaJobsPage() {
   // Kindred Standard + member). Families' names are never shown here.
   const [{ data: jobs }, access] = await Promise.all([
     supabase.rpc('browse_open_jobs'),
-    getMyAccess(supabase),
+    viewingAs && user ? getAccessFor(supabase, user.id) : getMyAccess(supabase),
   ]);
   const jobList = (jobs ?? []).slice(0, 50);
   const canApply = access?.is_listed === true;

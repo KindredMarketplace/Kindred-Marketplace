@@ -14,22 +14,18 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { formatCents } from '@/lib/utils/money';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { BrowseFilterChips } from '@/components/client/BrowseFilterChips';
 import { StartMessageModal } from '@/components/client/StartMessageModal';
-import { getMyAccess } from '@/lib/membership';
+import { getMyAccess, getAccessFor } from '@/lib/membership';
+import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
 
 export default async function ClientBrowsePage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, viewingAs } = await getViewer();
   if (!user) redirect('/login');
 
   const profileRes = await supabase.from('client_profiles').select('zip').eq('user_id', user.id).maybeSingle();
@@ -40,7 +36,7 @@ export default async function ClientBrowsePage() {
   // names/photos unless this family is a member or already connected.
   const [{ data: rows }, access] = await Promise.all([
     supabase.rpc('browse_caregivers'),
-    getMyAccess(supabase),
+    viewingAs && user ? getAccessFor(supabase, user.id) : getMyAccess(supabase),
   ]);
   const caregivers = rows ?? [];
   const isMember = access?.is_member ?? false;

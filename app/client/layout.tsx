@@ -16,7 +16,6 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { logoutAction } from '@/app/(auth)/actions';
 import { KindredMark } from '@/components/KindredMark';
 import { SiteFooter } from '@/components/SiteFooter';
@@ -26,13 +25,10 @@ import { initials, avatarClass } from '@/lib/utils/avatar';
 import { loadUnreadTotal } from '@/lib/messaging';
 import { InboxRealtimeRefresh } from '@/components/messaging/InboxRealtimeRefresh';
 import { PresencePinger } from '@/components/messaging/PresencePinger';
+import { getViewer } from '@/lib/viewer';
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getViewer();
   if (!user) redirect('/login');
 
   // Pull the family member's display data + their care recipient + any active

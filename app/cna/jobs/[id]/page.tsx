@@ -15,13 +15,13 @@
 
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { getMyAccess } from '@/lib/membership';
+import { getMyAccess, getAccessFor } from '@/lib/membership';
 import { formatCents } from '@/lib/utils/money';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { JobApplyModal } from '@/components/cna/JobApplyModal';
 import { WithdrawApplicationButton } from '@/components/cna/WithdrawApplicationButton';
 import { findThreadBetween } from '@/lib/messaging';
+import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,11 +49,7 @@ function payRange(min: number | null, max: number | null): string {
 
 export default async function CnaJobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, viewingAs } = await getViewer();
   if (!user) redirect('/login');
 
   // Listed caregivers (and anyone who already applied) can read the job row
@@ -67,7 +63,7 @@ export default async function CnaJobDetailPage({ params }: { params: Promise<{ i
       )
       .eq('id', id)
       .maybeSingle(),
-    getMyAccess(supabase),
+    viewingAs && user ? getAccessFor(supabase, user.id) : getMyAccess(supabase),
   ]);
 
   let job: (typeof direct & {}) | null = direct;

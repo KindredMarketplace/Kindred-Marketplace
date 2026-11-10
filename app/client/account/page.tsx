@@ -16,20 +16,16 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { CloseAccountButton } from '@/components/client/CloseAccountButton';
+import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
 const RELATIONSHIPS = ['Adult child (parent)', 'Spouse', 'Sibling', 'Self', 'Other'];
 
 export default async function ClientAccountPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getViewer();
   if (!user) redirect('/login');
 
   const [userRes, profileRes] = await Promise.all([

@@ -32,6 +32,13 @@ export async function getMyAccess(supabase: Client): Promise<AccessSnapshot | nu
   return data[0] as AccessSnapshot;
 }
 
+/** Same snapshot as getMyAccess, for another user. Only answers for admins (View as). */
+export async function getAccessFor(supabase: Client, userId: string): Promise<AccessSnapshot | null> {
+  const { data, error } = await supabase.rpc('access_for', { uid: userId });
+  if (error || !data || data.length === 0) return null;
+  return data[0] as AccessSnapshot;
+}
+
 export async function getPlanForRole(supabase: Client, role: 'client' | 'cna'): Promise<AccessPlan | null> {
   const { data } = await supabase
     .from('access_plans')

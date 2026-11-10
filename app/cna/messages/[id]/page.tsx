@@ -6,7 +6,6 @@
  */
 
 import { notFound, redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { loadInbox, loadUserPresence } from '@/lib/messaging';
 import { MessageInboxList } from '@/components/messaging/MessageInboxList';
 import {
@@ -14,6 +13,7 @@ import {
   type RenderedMessage,
   type ThreadHeaderInfo,
 } from '@/components/messaging/MessageThreadView';
+import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +23,7 @@ export default async function CnaMessageThreadPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: threadId } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getViewer();
   if (!user) redirect('/login');
 
   const { data: thread } = await supabase

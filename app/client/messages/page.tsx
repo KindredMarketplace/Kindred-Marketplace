@@ -10,9 +10,9 @@
  */
 
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { loadInbox } from '@/lib/messaging';
 import { MessageInboxList } from '@/components/messaging/MessageInboxList';
+import { getViewer } from '@/lib/viewer';
 // NOTE: <InboxRealtimeRefresh /> is mounted in app/client/layout.tsx, which wraps
 // this page. Mounting another instance here would try to subscribe to the same
 // channel name on the same Supabase client and throw "cannot add postgres_changes
@@ -22,10 +22,7 @@ import { MessageInboxList } from '@/components/messaging/MessageInboxList';
 export const dynamic = 'force-dynamic';
 
 export default async function ClientMessagesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getViewer();
   if (!user) redirect('/login');
 
   const { conversations, requests } = await loadInbox(supabase, user.id, 'client');

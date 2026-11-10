@@ -9,7 +9,6 @@
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { stopImpersonationAction } from '@/app/admin/actions';
 
 export default async function ImpersonationBanner() {
   const cookieStore = await cookies();
@@ -43,31 +42,22 @@ export default async function ImpersonationBanner() {
   if (!target) return null;
 
   return (
-    <div className="sticky top-0 z-50 bg-coral text-white shadow-md">
-      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between gap-4 text-sm">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="font-medium whitespace-nowrap">Admin mode &middot;</span>
-          <span className="truncate">
+    <div className="sticky top-0 z-[60] bg-coral text-white shadow-md">
+      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between gap-3 text-sm">
+        <div className="min-w-0">
+          <span className="truncate block">
             Viewing as <strong>{target.full_name || target.email}</strong>{' '}
-            <span className="opacity-80">({target.role})</span>
+            <span className="opacity-80">({target.role === 'cna' ? 'caregiver' : target.role === 'client' ? 'family' : target.role})</span>
           </span>
+          <span className="text-[11px] opacity-85 block">Read-only: nothing you click here gets saved.</span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href="/admin"
-            className="rounded-md bg-white/20 px-3 py-1 hover:bg-white/30 text-xs"
-          >
-            Back to admin
-          </Link>
-          <form action={stopImpersonationAction}>
-            <button
-              type="submit"
-              className="rounded-md bg-white text-coral px-3 py-1 hover:bg-stone-100 text-xs font-medium"
-            >
-              Stop viewing
-            </button>
-          </form>
-        </div>
+        <Link
+          href="/admin"
+          prefetch={false}
+          className="shrink-0 rounded-full bg-white text-coral px-4 py-1.5 hover:bg-stone-100 text-xs font-semibold"
+        >
+          ← Back to admin
+        </Link>
       </div>
     </div>
   );

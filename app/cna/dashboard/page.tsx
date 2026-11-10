@@ -13,19 +13,15 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { formatCents } from '@/lib/utils/money';
 import { AvailabilityToggle } from '@/components/cna/AvailabilityToggle';
 import { getBookingUrl, bookingLink } from '@/lib/interview';
+import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CnaDashboardPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getViewer();
   if (!user) redirect('/login');
 
   const [userRes, profileRes] = await Promise.all([

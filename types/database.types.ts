@@ -2863,6 +2863,20 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }[]
       }
+      access_for: {
+        Args: { uid: string }
+        Returns: {
+          current_period_end: string
+          founding: boolean
+          founding_slots_left: number
+          is_listed: boolean
+          is_member: boolean
+          meets_standard: boolean
+          membership_status: Database["public"]["Enums"]["membership_status"]
+          role: Database["public"]["Enums"]["user_role"]
+        }[]
+      }
+      admin_prepare_user_delete: { Args: { target: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }

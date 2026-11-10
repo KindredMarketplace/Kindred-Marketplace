@@ -8,17 +8,13 @@
  */
 
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { PostJobForm } from '@/components/client/PostJobForm';
+import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ClientPostJobPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getViewer();
   if (!user) redirect('/login');
 
   const [taxRes, profileRes, recipientsRes] = await Promise.all([

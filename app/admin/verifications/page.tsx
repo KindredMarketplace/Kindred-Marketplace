@@ -12,6 +12,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { AdminHeader } from '../AdminHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,17 +66,7 @@ export default async function AdminVerificationsPage() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <header className="bg-stone-900 text-white">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/admin" className="font-display text-xl">
-              Kindred <span className="text-stone-400">/ Admin</span>
-            </Link>
-            <span className="rounded-full bg-teal/30 px-3 py-0.5 text-xs font-medium text-sky">Verifications</span>
-          </div>
-          <Link href="/admin" className="text-sm text-stone-300 hover:text-white">&larr; Back to dashboard</Link>
-        </div>
-      </header>
+      <AdminHeader section="Documents" />
 
       <main className="max-w-5xl mx-auto px-6 py-10 space-y-10">
         <div>
