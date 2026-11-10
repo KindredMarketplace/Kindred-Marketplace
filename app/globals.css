@@ -65,6 +65,110 @@
     color: transparent;
   }
 
+  /* ---------- Brand loader (components/BrandLoader.tsx) ---------- */
+  .kl-k {
+    animation: klTurnIn 0.75s cubic-bezier(0.45, 0, 0.25, 1) 0.1s both, klBreathe 1.8s ease-in-out 1.6s infinite;
+    transform-origin: 50% 55%;
+  }
+  /* Starts exactly like the launch screen (K centred, full size), turns once,
+     then the word draws out beside it. */
+  @keyframes klTurnIn {
+    0% {
+      transform: perspective(500px) rotateY(0deg) scale(1);
+    }
+    45% {
+      transform: perspective(500px) rotateY(180deg) scale(0.92);
+    }
+    100% {
+      transform: perspective(500px) rotateY(360deg) scale(1);
+    }
+  }
+  .kl-word {
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 0;
+    animation: klDraw 0.65s cubic-bezier(0.25, 0.8, 0.25, 1) 0.8s forwards;
+  }
+  .kl-word > span {
+    display: inline-block;
+    opacity: 0;
+    transform: translateX(-12px);
+    animation: klWordIn 0.55s ease-out 0.88s forwards;
+  }
+  @keyframes klDraw {
+    to {
+      max-width: 9em;
+    }
+  }
+  @keyframes klWordIn {
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  .kl-line {
+    opacity: 0;
+    animation: klFade 0.4s ease-out 1.35s forwards;
+  }
+  .kl-line > span {
+    display: block;
+    height: 100%;
+    width: 40%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #8fc9b5, #5ba9b8, #7bb3d6);
+    animation: klSlide 1.2s ease-in-out infinite;
+  }
+  @keyframes klSlide {
+    from {
+      transform: translateX(-110%);
+    }
+    to {
+      transform: translateX(260%);
+    }
+  }
+  @keyframes klFade {
+    to {
+      opacity: 1;
+    }
+  }
+  .kl-breathe {
+    animation: klBreathe 1.6s ease-in-out infinite;
+  }
+  @keyframes klBreathe {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(0.9);
+      opacity: 0.7;
+    }
+  }
+  .kl-inline {
+    opacity: 0;
+    animation: klFade 0.25s ease-out 0.2s forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .kl-k,
+    .kl-breathe {
+      animation: none;
+    }
+    .kl-word {
+      max-width: none;
+      animation: none;
+    }
+    .kl-word > span {
+      opacity: 1;
+      transform: none;
+      animation: none;
+    }
+    .kl-line > span {
+      animation-duration: 2.4s;
+    }
+  }
+
   /* Bottom sheet (phone "Me" menu) slides up */
   .sheet-up {
     animation: sheetUp 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
