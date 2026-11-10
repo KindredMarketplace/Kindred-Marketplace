@@ -12,7 +12,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { logoutAction } from '@/app/(auth)/actions';
-import { KindredMark } from '@/components/KindredMark';
+import { KindredWordmark } from '@/components/KindredMark';
 import { SiteFooter } from '@/components/SiteFooter';
 import { CnaNavLinks, CnaMobileMenu } from '@/components/cna/CnaNavLinks';
 import { WelcomeCelebration } from '@/components/cna/WelcomeCelebration';
@@ -126,8 +126,7 @@ export default async function CnaLayout({ children }: { children: React.ReactNod
       <header className="bg-cream/90 backdrop-blur-md border-b border-ink/10 sticky top-0 z-40">
         <div className="max-w-kindred mx-auto px-4 sm:px-6 py-3 xl:py-4 flex items-center justify-between gap-4 xl:gap-6">
           <Link href="/cna/dashboard" className="flex items-center gap-2.5 shrink-0">
-            <KindredMark size={40} />
-            <span className="font-display text-2xl font-medium tracking-tight">Kindred</span>
+            <KindredWordmark height={34} />
             <span className="hidden 2xl:inline text-xs font-mono text-ink/50 ml-1 mt-2">
               for caregivers
             </span>

@@ -8,7 +8,7 @@
 import { Suspense, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { KindredMark } from '@/components/KindredMark';
+import { KindredWordmark } from '@/components/KindredMark';
 import { loginAction, type LoginResult } from '../actions';
 
 export default function LoginPage() {
@@ -40,8 +40,7 @@ function LoginForm() {
       {/* Header */}
       <header className="px-6 py-5 border-b border-ink/10">
         <Link href="/" className="flex items-center gap-2.5">
-          <KindredMark size={36} />
-          <span className="font-display text-2xl font-medium tracking-tight">Kindred</span>
+          <KindredWordmark height={34} />
         </Link>
       </header>
 

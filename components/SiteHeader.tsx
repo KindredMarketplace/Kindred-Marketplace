@@ -10,7 +10,7 @@
  */
 
 import Link from 'next/link';
-import { KindredMark } from '@/components/KindredMark';
+import { KindredWordmark } from '@/components/KindredMark';
 
 export function SiteHeader() {
   return (
@@ -44,8 +44,7 @@ export function SiteHeader() {
       <header className="bg-cream/90 backdrop-blur-md border-b border-ink/10 sticky top-0 z-40">
         <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between gap-8">
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <KindredMark size={40} />
-            <span className="font-display text-2xl font-medium tracking-tight">Kindred</span>
+            <KindredWordmark height={34} />
           </Link>
 
           {/* Inline search (routes to Browse) */}

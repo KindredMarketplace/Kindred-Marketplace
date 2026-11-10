@@ -14,7 +14,7 @@
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { KindredMark } from '@/components/KindredMark';
+import { KindredWordmark } from '@/components/KindredMark';
 import { signupAction, type SignupResult } from '../actions';
 
 type Role = 'client' | 'cna' | 'business';
@@ -95,8 +95,7 @@ export default function SignupPage() {
       {/* Header */}
       <header className="px-6 py-5 border-b border-ink/10 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
-          <KindredMark size={36} />
-          <span className="font-display text-2xl font-medium tracking-tight">Kindred</span>
+          <KindredWordmark height={34} />
         </Link>
         <span className="text-sm text-ink/60">
           Have an account?{' '}

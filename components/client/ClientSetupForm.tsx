@@ -19,7 +19,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { KindredMark } from '@/components/KindredMark';
+import { KindredWordmark } from '@/components/KindredMark';
 import { saveCareProfileAction, skipSetupAction } from '@/app/client/setup/actions';
 
 type ServiceOption = { key: string; label: string; category: string };
@@ -156,8 +156,7 @@ export function ClientSetupForm({
       {/* Header */}
       <header className="px-6 py-4 flex items-center justify-between border-b border-ink/10">
         <div className="flex items-center gap-2.5">
-          <KindredMark size={32} />
-          <span className="font-display text-xl font-medium tracking-tight">Kindred</span>
+          <KindredWordmark height={30} />
         </div>
         <button
           onClick={skipEverything}

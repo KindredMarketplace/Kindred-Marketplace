@@ -13,7 +13,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { KindredMark } from '@/components/KindredMark';
+import { KindredWordmark } from '@/components/KindredMark';
 import { createClient } from '@/lib/supabase/client';
 import { MediaAnswer } from './MediaAnswer';
 import {
@@ -414,8 +414,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-cream flex flex-col">
       <header className="px-6 py-5 border-b border-ink/10">
         <Link href="/" className="flex items-center gap-2.5">
-          <KindredMark size={36} />
-          <span className="font-display text-2xl font-medium tracking-tight">Kindred</span>
+          <KindredWordmark height={34} />
         </Link>
       </header>
       <main className="flex-1 flex items-start justify-center px-6 py-12">

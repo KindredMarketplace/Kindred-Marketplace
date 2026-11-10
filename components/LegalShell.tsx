@@ -17,7 +17,7 @@
 
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { KindredMark } from '@/components/KindredMark';
+import { KindredWordmark } from '@/components/KindredMark';
 import { SiteFooter } from '@/components/SiteFooter';
 
 const DASHBOARD_BY_ROLE: Record<string, string> = {
@@ -68,8 +68,7 @@ export async function LegalShell({
       <header className="bg-cream/90 backdrop-blur-md border-b border-ink/10 sticky top-0 z-40">
         <div className="max-w-kindred mx-auto px-6 py-4 flex items-center justify-between">
           <Link href={homeHref} className="flex items-center gap-2.5">
-            <KindredMark size={40} />
-            <span className="font-display text-2xl font-medium tracking-tight">Kindred</span>
+            <KindredWordmark height={34} />
           </Link>
           <nav className="flex items-center gap-5 text-sm">
             {links.map((l) => (
