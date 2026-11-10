@@ -48,3 +48,10 @@ Nick's list of moments that should notify someone. The `notifications` table alr
 | Both | New message |
 | Family | A caregiver applied to your job / accepted your message request |
 | Admin | New application / new document uploaded for review |
+
+## Backlog from Nick's phone testing (Nov 10)
+
+- **Forgot password / change password** flow (there is none yet; admins can set a password from People in the meantime).
+- Settings: notification choices (with the Phase 4 notifications system), two-step sign-in, signed-in devices, pause profile, download my data, time zone / language.
+- Family side: profile photo and a working Account page (mirror of the caregiver settings work).
+- Optional: admin review of new profile photos before families see them.

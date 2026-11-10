@@ -41,7 +41,7 @@ export default async function ProfilePreviewPage({ searchParams }: { searchParam
   const [{ data: p }, { data: services }, standard] = await Promise.all([
     supabase
       .from('cna_profiles')
-      .select('user_id, display_name, last_name, headline, bio, hourly_rate_cents, years_experience, experience_hours, service_zip, languages, gender, availability_status')
+      .select('user_id, display_name, last_name, photo_url, headline, bio, hourly_rate_cents, years_experience, experience_hours, service_zip, languages, gender, availability_status')
       .eq('user_id', user.id)
       .maybeSingle(),
     supabase.from('cna_services').select('service_key').eq('cna_id', user.id),
@@ -59,6 +59,7 @@ export default async function ProfilePreviewPage({ searchParams }: { searchParam
     user_id: p.user_id,
     display_name: asMember ? p.display_name : (p.display_name ?? '').charAt(0) || null,
     last_name: asMember ? p.last_name : null,
+    photo_url: asMember ? p.photo_url : null,
     headline: asMember ? p.headline : maskNames(p.headline, p.display_name, p.last_name),
     bio: asMember ? p.bio : maskNames(p.bio, p.display_name, p.last_name),
     hourly_rate_cents: p.hourly_rate_cents,

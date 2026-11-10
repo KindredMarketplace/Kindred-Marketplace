@@ -272,6 +272,7 @@ export function PortalTabBar({ tabs, me }: { tabs: PortalTab[]; me: MeSheet }) {
                 <li key={l.href}>
                   <Link
                     href={l.href}
+                    onClick={() => setSheet(false)}
                     className={`flex items-center gap-3 px-4 py-3.5 rounded-xl hover:bg-mist ${l.accent ? 'text-coral font-medium' : ''}`}
                   >
                     <span className="w-6 text-center text-lg" aria-hidden="true">{l.emoji}</span>

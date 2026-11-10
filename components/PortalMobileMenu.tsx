@@ -77,6 +77,7 @@ export function PortalMobileMenu({
               key={l.href}
               href={l.href}
               aria-current={isActive(l.href) ? 'page' : undefined}
+              onClick={() => setOpen(false)}
               className={`flex items-center justify-between px-4 py-3 text-sm rounded-lg hover:bg-mist ${
                 isActive(l.href) ? 'bg-mist font-medium text-deepteal' : l.accent ? 'text-coral font-medium' : ''
               }`}

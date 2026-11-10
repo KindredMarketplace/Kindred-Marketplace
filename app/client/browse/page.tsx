@@ -192,9 +192,14 @@ export default async function ClientBrowsePage() {
                     </div>
                   )}
                   <div className="flex gap-5">
-                    <div className={`w-20 h-20 rounded-2xl ${av} flex items-center justify-center text-cream font-display text-3xl font-medium flex-shrink-0`}>
-                      {initials(c.display_name)}
-                    </div>
+                    {c.identity_unlocked && c.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.photo_url} alt="" className="w-20 h-20 rounded-2xl object-cover flex-shrink-0" />
+                    ) : (
+                      <div className={`w-20 h-20 rounded-2xl ${av} flex items-center justify-center text-cream font-display text-3xl font-medium flex-shrink-0`}>
+                        {initials(c.display_name)}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-3 flex-wrap">
                         <div>

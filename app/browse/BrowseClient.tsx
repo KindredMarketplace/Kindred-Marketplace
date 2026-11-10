@@ -23,6 +23,8 @@ export type Caregiver = {
   user_id: string;
   display_name: string | null;
   last_name: string | null;
+  /** Only present when this viewer may see who they are (identity_unlocked). */
+  photo_url?: string | null;
   headline: string | null;
   bio: string | null;
   hourly_rate_cents: number | null;
@@ -253,9 +255,14 @@ export function BrowseClient({ caregivers, viewer = 'anon' }: { caregivers: Care
                   className="card-hover bg-white border border-ink/10 rounded-2xl p-5"
                 >
                   <div className="flex items-start gap-3 mb-3">
-                    <div className={`w-16 h-16 rounded-full ${AV[i % AV.length]} flex items-center justify-center text-cream font-display text-xl font-medium flex-shrink-0`}>
-                      {initials(c)}
-                    </div>
+                    {c.identity_unlocked && c.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.photo_url} alt="" className="w-16 h-16 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <div className={`w-16 h-16 rounded-full ${AV[i % AV.length]} flex items-center justify-center text-cream font-display text-xl font-medium flex-shrink-0`}>
+                        {initials(c)}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="font-display text-lg font-medium leading-tight">{displayName(c)}</div>
                       <div className="text-xs text-ink/60 font-mono">
@@ -322,9 +329,14 @@ export function BrowseClient({ caregivers, viewer = 'anon' }: { caregivers: Care
             </button>
             <div className={`h-32 ${AV[0]}`} />
             <div className="px-6 pb-8 -mt-12 relative">
-              <div className={`w-24 h-24 rounded-full ${AV[0]} border-4 border-cream flex items-center justify-center text-cream font-display text-3xl font-medium`}>
-                {initials(selected)}
-              </div>
+              {selected.identity_unlocked && selected.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={selected.photo_url} alt="" className="w-24 h-24 rounded-full border-4 border-cream object-cover" />
+              ) : (
+                <div className={`w-24 h-24 rounded-full ${AV[0]} border-4 border-cream flex items-center justify-center text-cream font-display text-3xl font-medium`}>
+                  {initials(selected)}
+                </div>
+              )}
               <div className="flex items-center gap-2 mt-3 flex-wrap">
                 <h2 className="font-display text-3xl font-medium">{displayName(selected)}</h2>
                 <span className="bg-sage/20 text-deepteal px-2 py-0.5 rounded-full text-xs font-medium">✓ Kindred Standard</span>
