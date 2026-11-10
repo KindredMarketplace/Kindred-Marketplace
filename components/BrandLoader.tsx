@@ -1,18 +1,64 @@
 /**
- * BrandLoader — what people see while a page is on its way.
+ * Kindred loading visuals (approved Nov 10; reference file:
+ * Kindred/Brand/Kindred Loading Animation.html).
  *
- *   full    the first screen when the app opens: the K turns in, then the
- *           word "Kindred" draws out beside it, then a soft pulse and a
- *           moving line underneath while the page finishes loading.
- *   inline  switching tabs inside the caregiver / family app: just the K,
- *           breathing, under the header (the header + tab bar stay put).
- *           Waits a beat before appearing so fast pages don't flash it.
+ *   <LaunchIntro />            once each time the app is opened: the k from the
+ *                              word logo turns, glides left as "indred" unrolls,
+ *                              a circle loads around it, then it fades away
+ *                              (about 3 s, tap anywhere to skip). Rendered in
+ *                              the root layout but hidden by CSS unless the
+ *                              tiny head script (LAUNCH_INTRO_SCRIPT) switched
+ *                              it on for this visit, so it never flashes on
+ *                              later page loads and costs nothing for crawlers.
+ *   <BrandLoader variant="full">   while a page is still on its way: the word
+ *                              logo with the circle turning around it.
+ *   <BrandLoader variant="inline"> switching tabs inside a section: a small
+ *                              breathing k under the header (only if slow).
  *
- * Pure CSS (globals.css: .kl-*), no JavaScript, so it shows the instant the
- * server starts streaming. Calmer for people who ask for reduced motion.
+ * Pure CSS (globals.css: .kl-*). Calmer for people who ask for less motion.
  */
 
 import Image from 'next/image';
+
+/** Runs in <head> before first paint. Once per browser/app session. */
+export const LAUNCH_INTRO_SCRIPT = `try{var d=document.documentElement;if(!sessionStorage.getItem('kl-intro')&&!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)){d.classList.add('kl-intro-on');sessionStorage.setItem('kl-intro','1');document.addEventListener('click',function(e){var t=e.target&&e.target.closest&&e.target.closest('.kl-intro');if(t)t.classList.add('kl-skip');},true);}}catch(e){}`;
+
+function WordmarkRing({ sequence }: { sequence: boolean }) {
+  return (
+    <div className={`kl-mark ${sequence ? 'kl-seq' : ''}`}>
+      <svg className="kl-ring" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id={sequence ? 'klg-intro' : 'klg-load'} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#8fc9b5" />
+            <stop offset=".5" stopColor="#5ba9b8" />
+            <stop offset="1" stopColor="#2e6e73" />
+          </linearGradient>
+        </defs>
+        <circle className="kl-track" cx="50" cy="50" r="48" fill="none" strokeWidth="1.2" />
+        <circle
+          className="kl-arc"
+          cx="50"
+          cy="50"
+          r="48"
+          fill="none"
+          stroke={`url(#${sequence ? 'klg-intro' : 'klg-load'})`}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeDasharray="40 262"
+        />
+      </svg>
+      <Image src="/brand/kindred-wordmark.png" width={717} height={166} alt="Kindred" className="kl-wm" priority />
+    </div>
+  );
+}
+
+export function LaunchIntro() {
+  return (
+    <div className="kl-intro fixed inset-0 z-[100] bg-cream items-center justify-center" aria-hidden="true">
+      <WordmarkRing sequence />
+    </div>
+  );
+}
 
 export function BrandLoader({ variant = 'full' }: { variant?: 'full' | 'inline' }) {
   if (variant === 'inline') {
@@ -25,16 +71,8 @@ export function BrandLoader({ variant = 'full' }: { variant?: 'full' | 'inline' 
   }
 
   return (
-    <div className="fixed inset-0 z-[80] bg-cream flex flex-col items-center justify-center" role="status" aria-live="polite">
-      <div className="flex items-center">
-        <Image src="/brand/kindred-k.png" width={72} height={72} alt="" aria-hidden="true" className="kl-k" priority />
-        <span className="kl-word font-display text-5xl font-medium tracking-tight text-ink" aria-hidden="true">
-          <span className="pl-3">Kindred</span>
-        </span>
-      </div>
-      <div className="kl-line absolute left-1/2 top-[calc(50%+64px)] -translate-x-1/2 h-[3px] w-40 rounded-full bg-ink/10 overflow-hidden" aria-hidden="true">
-        <span />
-      </div>
+    <div className="fixed inset-0 z-[80] bg-cream flex items-center justify-center" role="status" aria-live="polite">
+      <WordmarkRing sequence={false} />
       <span className="sr-only">Loading Kindred</span>
     </div>
   );

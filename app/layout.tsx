@@ -5,6 +5,7 @@ import './globals.css';
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 import { RegisterServiceWorker } from '@/components/pwa/RegisterServiceWorker';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
+import { LaunchIntro, LAUNCH_INTRO_SCRIPT } from '@/components/BrandLoader';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -82,10 +83,16 @@ export default function RootLayout({
 }) {
   return (
     <html
+      suppressHydrationWarning
       lang="en"
       className={`${inter.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        {/* Turns on the launch intro once per app/browser session, before first paint. */}
+        <script dangerouslySetInnerHTML={{ __html: LAUNCH_INTRO_SCRIPT }} />
+      </head>
       <body className="bg-cream text-ink antialiased">
+        <LaunchIntro />
         {/* Sticky banner — only renders when an admin is impersonating someone */}
         <Suspense fallback={null}>
           <ImpersonationBanner />
