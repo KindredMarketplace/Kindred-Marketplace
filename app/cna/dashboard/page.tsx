@@ -16,6 +16,7 @@ import { redirect } from 'next/navigation';
 import { formatCents } from '@/lib/utils/money';
 import { AvailabilityToggle } from '@/components/cna/AvailabilityToggle';
 import { getBookingUrl, bookingLink } from '@/lib/interview';
+import { getStandardStatus, DOC_STATE_LABEL, type DocState } from '@/lib/standard';
 import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,10 @@ export default async function CnaDashboardPage() {
   const profile = profileRes.data;
   const firstName = (profile?.display_name || me?.full_name || 'there').split(' ')[0];
   const appStatus = profile?.application_status ?? null;
+  const [standard, { count: savedCount }] = await Promise.all([
+    getStandardStatus(supabase, user.id),
+    supabase.from('saved_jobs').select('job_id', { count: 'exact', head: true }).eq('cna_id', user.id),
+  ]);
   const bookingUrl = appStatus === 'interviewing' && !profile?.interview_at ? await getBookingUrl(supabase) : null;
   const myBookingLink = bookingUrl
     ? bookingLink(bookingUrl, [profile?.display_name, profile?.last_name].filter(Boolean).join(' ') || me?.full_name, me?.email)
@@ -270,40 +275,40 @@ export default async function CnaDashboardPage() {
             </div>
           </div>
 
-          {/* CREDENTIAL STATUS — real data (license + bg check) */}
+          {/* KINDRED STANDARD — straight from what Kindred verified */}
           {profile && (
             <div
               className={`rounded-2xl p-5 border ${
-                profile.bg_check_status === 'clear' && profile.license_verified_at
-                  ? 'bg-mist/40 border-teal/20'
-                  : 'bg-coral/5 border-coral/30'
+                standard.allMet ? 'bg-sage/15 border-sage/40' : 'bg-white border-ink/10'
               }`}
             >
               <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-3">
-                Your credentials
+                {standard.allMet ? '✓ Kindred Standard met' : 'Your Kindred Standard'}
               </div>
               <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span>FL CNA License</span>
-                  <span className={profile.license_verified_at ? 'text-deepteal' : 'text-coral'}>
-                    {profile.license_verified_at ? '✓ Verified' : 'Pending'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Background check</span>
-                  <span className={profile.bg_check_status === 'clear' ? 'text-deepteal' : 'text-coral'}>
-                    {profile.bg_check_status === 'clear' ? '✓ Cleared' : 'Pending'}
-                  </span>
-                </div>
+                <StandardRow label="Interview" value={standard.interview ? '✓ Passed' : 'Not yet'} ok={standard.interview} />
+                <StandardRow
+                  label="1,500+ hours"
+                  value={standard.hours.met ? '✓ Confirmed' : standard.hours.confirmed != null ? `${standard.hours.confirmed.toLocaleString('en-US')} confirmed` : 'Not confirmed yet'}
+                  ok={standard.hours.met}
+                />
+                <StandardRow label="Level 2 background check" value={docLabel(standard.l2bg.state, standard.accepted)} ok={standard.l2bg.state === 'verified'} />
+                <StandardRow label="Photo ID" value={docLabel(standard.identity.state, standard.accepted)} ok={standard.identity.state === 'verified'} />
+                <StandardRow label="Liability insurance" value={docLabel(standard.insurance.state, standard.accepted)} ok={standard.insurance.state === 'verified'} />
               </div>
-              <Link
-                href="/cna/compliance"
-                className="inline-block mt-4 text-xs text-deepteal hover:text-coral font-medium"
-              >
-                View compliance →
+              <Link href="/cna/compliance" className="inline-block mt-4 text-xs text-deepteal hover:text-coral font-medium">
+                {standard.allMet ? 'See your documents →' : 'Open Credentials →'}
               </Link>
             </div>
           )}
+
+          <Link
+            href="/cna/jobs?saved=1"
+            className="flex items-center justify-between rounded-2xl p-4 border border-ink/10 bg-white hover:border-coral/40 transition"
+          >
+            <span className="text-sm font-medium">♥ Saved jobs</span>
+            <span className="text-xs text-ink/60">{savedCount ?? 0} →</span>
+          </Link>
         </div>
       </section>
 
@@ -479,4 +484,18 @@ function ApplicationStatusCard({
   }
 
   return null;
+}
+
+function docLabel(state: DocState, accepted: boolean): string {
+  if (state === 'none' && !accepted) return 'After acceptance';
+  return DOC_STATE_LABEL[state];
+}
+
+function StandardRow({ label, value, ok }: { label: string; value: string; ok: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span>{label}</span>
+      <span className={`text-right ${ok ? 'text-deepteal' : 'text-ink/55'}`}>{value}</span>
+    </div>
+  );
 }

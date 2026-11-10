@@ -220,12 +220,14 @@ export default function ApplyPage() {
           <p className="text-xs text-ink/55 mt-5">
             Log in any time with your email and the password you just made to check where things stand.
           </p>
-          <Link
-            href={signedIn ? '/cna/dashboard' : '/login'}
+          {/* A full page load (not a client-side route change), so the
+              fresh sign-in cookies are definitely sent with the request. */}
+          <a
+            href={signedIn ? '/cna/dashboard' : '/login?next=/cna/dashboard'}
             className="mt-4 inline-block text-center rounded-xl bg-deepteal px-6 py-2.5 font-medium text-cream hover:bg-deepteal/90"
           >
             {signedIn ? 'Go to my dashboard' : 'Log in'}
-          </Link>
+          </a>
         </div>
       </Shell>
     );

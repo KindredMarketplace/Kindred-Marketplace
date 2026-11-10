@@ -1,14 +1,8 @@
 /**
- * /cna/profile — caregiver's public profile editor. Ported from
- * CNA-Portal/profile.html.
- *
- * Today's scope (per "real data only"): render the profile in the mock's exact
- * shape, populated with the caregiver's REAL data (name, bio, rate, languages,
- * license, bg check, tier). Editing/saving is stubbed for a follow-up session —
- * fields show real values but the Save action is not yet wired. Reviews show an
- * empty state until the reviews system is connected.
- *
- * Shell (nav/footer) comes from app/cna/layout.tsx.
+ * /cna/profile — the caregiver's public profile: how families see them, with
+ * a working editor (headline, story, rate, area, languages) and trust badges
+ * read from what Kindred actually verified (lib/standard.ts).
+ * "Preview as a family" opens /cna/profile/preview.
  */
 
 import Link from 'next/link';
@@ -16,6 +10,8 @@ import { redirect } from 'next/navigation';
 import { formatCents } from '@/lib/utils/money';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { getViewer } from '@/lib/viewer';
+import { getStandardStatus, formatExpiry, type DocState } from '@/lib/standard';
+import { ProfileEditor } from '@/components/cna/ProfileEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,9 +37,11 @@ export default async function CnaProfilePage() {
   const avClass = avatarClass(fullName);
   const rateText = profile?.hourly_rate_cents ? formatCents(profile.hourly_rate_cents, { showFraction: false }) : null;
   const languages: string[] = profile?.languages ?? [];
+  const standard = await getStandardStatus(supabase, user.id);
+  const badgeOn = (st: DocState) => st === 'verified';
 
   return (
-    <main className="max-w-kindred mx-auto px-6 py-10 lg:py-14">
+    <main className="max-w-kindred mx-auto px-4 sm:px-6 py-10 lg:py-14">
       {/* HEADER */}
       <section className="mb-8 fade-up flex items-end justify-between flex-wrap gap-4">
         <div>
@@ -56,10 +54,17 @@ export default async function CnaProfilePage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button className="bg-white border border-ink/15 px-4 py-2.5 text-sm rounded-full hover:bg-mist transition">
-            👁️ Preview as client
-          </button>
-          <button className="bg-deepteal text-cream px-5 py-2.5 text-sm rounded-full hover:bg-inkdark transition">
+          <Link
+            href="/cna/profile/preview"
+            className="bg-white border border-ink/15 px-4 py-2.5 text-sm rounded-full hover:bg-mist transition"
+          >
+            👁️ Preview as a family
+          </Link>
+          <button
+            type="submit"
+            form="profile-form"
+            className="bg-deepteal text-cream px-5 py-2.5 text-sm rounded-full hover:bg-inkdark transition"
+          >
             ✓ Save changes
           </button>
         </div>
@@ -77,17 +82,17 @@ export default async function CnaProfilePage() {
               <div className="flex-1 min-w-0 pb-2">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <div className="text-xs font-mono uppercase tracking-widest text-ink/50">Caregiver</div>
-                  {profile?.tier === 'verified' && (
-                    <span className="text-[10px] bg-sage/20 text-deepteal px-2 py-0.5 rounded-full font-medium">Verified</span>
+                  {standard.allMet && (
+                    <span className="text-[10px] bg-sage/20 text-deepteal px-2 py-0.5 rounded-full font-medium">✓ Kindred Standard</span>
                   )}
-                  {profile?.tier === 'top_rated' && (
-                    <span className="text-[10px] bg-coral/20 text-coral px-2 py-0.5 rounded-full font-medium">Top-Rated</span>
+                  {badgeOn(standard.l2bg.state) && (
+                    <span className="text-[10px] bg-mist text-deepteal px-2 py-0.5 rounded-full font-medium">Level 2 background check</span>
                   )}
-                  {profile?.bg_check_status === 'clear' && (
-                    <span className="text-[10px] bg-mist text-deepteal px-2 py-0.5 rounded-full font-medium">L2 BG check</span>
+                  {badgeOn(standard.identity.state) && (
+                    <span className="text-[10px] bg-mist text-deepteal px-2 py-0.5 rounded-full font-medium">ID verified</span>
                   )}
-                  {profile?.license_verified_at && (
-                    <span className="text-[10px] bg-mist text-deepteal px-2 py-0.5 rounded-full font-medium">License verified</span>
+                  {badgeOn(standard.insurance.state) && (
+                    <span className="text-[10px] bg-mist text-deepteal px-2 py-0.5 rounded-full font-medium">Insured</span>
                   )}
                 </div>
                 <h2 className="font-display text-3xl lg:text-4xl font-medium">{publicName}</h2>
@@ -127,77 +132,16 @@ export default async function CnaProfilePage() {
       <section className="grid lg:grid-cols-3 gap-6">
         {/* LEFT */}
         <div className="lg:col-span-2 space-y-6">
-          {/* BIO */}
-          <div className="bg-white border border-ink/10 rounded-2xl p-6 fade-up" style={{ animationDelay: '.15s' }}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-1">Tell families about yourself</div>
-                <h3 className="font-display text-xl font-medium">Your story</h3>
-              </div>
-            </div>
-            <textarea
-              rows={6}
-              defaultValue={profile?.bio ?? ''}
-              placeholder="Tell families why you do this work…"
-              className="w-full px-4 py-3 border border-ink/15 rounded-xl text-base focus:outline-none focus:border-teal leading-relaxed"
-            />
-            <div className="flex items-center justify-between mt-2 text-xs">
-              <span className="text-ink/50">Tip: families respond strongly to "why you do this work."</span>
-              <span className="font-mono text-ink/40">{(profile?.bio ?? '').length} / 800 chars</span>
-            </div>
-          </div>
-
-          {/* HEADLINE */}
-          <div className="bg-white border border-ink/10 rounded-2xl p-6 fade-up" style={{ animationDelay: '.18s' }}>
-            <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-1">One-line headline</div>
-            <h3 className="font-display text-xl font-medium mb-3">How you describe yourself</h3>
-            <input
-              type="text"
-              defaultValue={profile?.headline ?? ''}
-              placeholder="e.g. Bilingual dementia & post-surgical care specialist"
-              className="w-full px-4 py-2.5 border border-ink/15 rounded-xl text-sm focus:outline-none focus:border-teal"
-            />
-          </div>
-
-          {/* RATE */}
-          <div className="bg-white border border-ink/10 rounded-2xl p-6 fade-up" style={{ animationDelay: '.25s' }}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-1">Your pay</div>
-                <h3 className="font-display text-xl font-medium">Hourly rate</h3>
-              </div>
-            </div>
-            <div className="grid sm:grid-cols-3 gap-4">
-              <div>
-                <label className="text-xs font-medium text-ink/70 mb-1.5 block">Standard rate</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ink/50">$</span>
-                  <input
-                    type="number"
-                    defaultValue={profile?.hourly_rate_cents ? Math.round(profile.hourly_rate_cents / 100) : ''}
-                    className="w-full pl-8 pr-12 py-2.5 border border-ink/15 rounded-xl text-sm font-mono focus:outline-none focus:border-teal"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/50 text-xs">/hr</span>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-ink/70 mb-1.5 block">Overnight rate</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ink/50">$</span>
-                  <input type="number" placeholder="—" className="w-full pl-8 pr-12 py-2.5 border border-ink/15 rounded-xl text-sm font-mono focus:outline-none focus:border-teal" />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/50 text-xs">/hr</span>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-ink/70 mb-1.5 block">Weekend / holiday</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ink/50">$</span>
-                  <input type="number" placeholder="—" className="w-full pl-8 pr-12 py-2.5 border border-ink/15 rounded-xl text-sm font-mono focus:outline-none focus:border-teal" />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/50 text-xs">/hr</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ProfileEditor
+            initial={{
+              headline: profile?.headline ?? '',
+              bio: profile?.bio ?? '',
+              rate: profile?.hourly_rate_cents ? String(Math.round(profile.hourly_rate_cents / 100)) : '',
+              languages: languages.join(', '),
+              service_zip: profile?.service_zip ?? '',
+              service_radius_miles: profile?.service_radius_miles != null ? String(profile.service_radius_miles) : '',
+            }}
+          />
 
           {/* REVIEWS — empty state (no reviews wired yet) */}
           <div className="bg-white border border-ink/10 rounded-2xl p-6 fade-up" style={{ animationDelay: '.3s' }}>
@@ -224,38 +168,28 @@ export default async function CnaProfilePage() {
 
         {/* RIGHT */}
         <div className="space-y-6">
-          {/* BADGES — real verification data */}
+          {/* TRUST BADGES — from what Kindred verified */}
           <div className="bg-white border border-ink/10 rounded-2xl p-6 fade-up" style={{ animationDelay: '.15s' }}>
             <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-1">Trust badges</div>
-            <h3 className="font-display text-xl font-medium mb-4">Verifications</h3>
+            <h3 className="font-display text-xl font-medium mb-4">Verified by Kindred</h3>
             <div className="space-y-3">
-              <div className={`flex items-center gap-3 p-3 rounded-xl border ${profile?.license_verified_at ? 'bg-sage/10 border-sage/30' : 'bg-mist/50 border-ink/10 opacity-70'}`}>
-                <div className="text-xl">🏅</div>
-                <div className="flex-1">
-                  <div className="font-medium text-sm">CNA license</div>
-                  <div className="text-[10px] text-ink/60 font-mono">
-                    {profile?.license_number ? `FL #${profile.license_number}` : 'Not added'}
-                    {profile?.license_verified_at ? ' · Active' : ''}
-                  </div>
-                </div>
-                <span className={profile?.license_verified_at ? 'text-sage' : 'text-ink/30'}>
-                  {profile?.license_verified_at ? '✓' : '—'}
-                </span>
-              </div>
-
-              <div className={`flex items-center gap-3 p-3 rounded-xl border ${profile?.bg_check_status === 'clear' ? 'bg-sage/10 border-sage/30' : 'bg-mist/50 border-ink/10 opacity-70'}`}>
-                <div className="text-xl">🛡️</div>
-                <div className="flex-1">
-                  <div className="font-medium text-sm">L2 background check</div>
-                  <div className="text-[10px] text-ink/60 font-mono">
-                    {profile?.bg_check_status === 'clear' ? 'Cleared' : 'Not complete'}
-                  </div>
-                </div>
-                <span className={profile?.bg_check_status === 'clear' ? 'text-sage' : 'text-ink/30'}>
-                  {profile?.bg_check_status === 'clear' ? '✓' : '—'}
-                </span>
-              </div>
+              <Badge icon="🤝" title="Interviewed by Kindred" detail={standard.interview ? 'Passed' : 'Not yet'} on={standard.interview} />
+              <Badge
+                icon="⏱️"
+                title="1,500+ hours of care"
+                detail={standard.hours.confirmed != null ? `${standard.hours.confirmed.toLocaleString('en-US')} hours confirmed` : 'Not confirmed yet'}
+                on={standard.hours.met}
+              />
+              <Badge icon="🛡️" title="Level 2 background check" detail={docDetail(standard.l2bg.state, standard.l2bg.expiresAt)} on={badgeOn(standard.l2bg.state)} />
+              <Badge icon="🪪" title="ID verified" detail={docDetail(standard.identity.state, standard.identity.expiresAt)} on={badgeOn(standard.identity.state)} />
+              <Badge icon="📄" title="Own liability insurance" detail={docDetail(standard.insurance.state, standard.insurance.expiresAt)} on={badgeOn(standard.insurance.state)} />
             </div>
+            {profile?.credential && (
+              <p className="mt-4 text-xs text-ink/55">
+                Credential you listed: {profile.credential.toUpperCase()}
+                {profile.license_number ? ` #${profile.license_number}` : ''}
+              </p>
+            )}
           </div>
 
           {/* LANGUAGES — real data */}
@@ -271,34 +205,85 @@ export default async function CnaProfilePage() {
                 ))}
               </div>
             ) : (
-              <button className="w-full bg-cream border border-ink/15 py-2.5 rounded-full text-sm hover:bg-mist transition">
-                + Add languages
-              </button>
+              <p className="text-sm text-ink/55">Add the languages you speak in &ldquo;Area and languages&rdquo;.</p>
             )}
           </div>
 
-          {/* INSURANCE STATUS */}
-          <div className="bg-gradient-to-br from-butter/25 to-coral/10 border border-coral/20 rounded-2xl p-6 fade-up" style={{ animationDelay: '.3s' }}>
-            <div className="flex items-start gap-3 mb-3">
-              <div className="text-2xl">🛡️</div>
-              <div>
-                <div className="font-display text-lg font-medium">Insurance status</div>
-                <div className="text-xs text-ink/60">Not yet enrolled</div>
+          {/* INSURANCE STATUS — from the verified certificate */}
+          {standard.insurance.state === 'verified' ? (
+            <div className="bg-sage/15 border border-sage/40 rounded-2xl p-6 fade-up" style={{ animationDelay: '.3s' }}>
+              <div className="flex items-start gap-3 mb-2">
+                <div className="text-2xl">🛡️</div>
+                <div>
+                  <div className="font-display text-lg font-medium">Insurance verified</div>
+                  <div className="text-xs text-ink/60">
+                    {standard.insurance.expiresAt ? `Good through ${formatExpiry(standard.insurance.expiresAt)}` : 'On file with Kindred'}
+                  </div>
+                </div>
               </div>
+              <p className="text-xs text-ink/70 leading-relaxed">We&rsquo;ll remind you before it expires so your badge doesn&rsquo;t lapse.</p>
             </div>
-            <p className="text-xs text-ink/70 leading-relaxed mb-4">
-              Adding insurance shows clients you take this seriously — and policies are affordable
-              through our partner.
-            </p>
-            <Link
-              href="/cna/get-insured"
-              className="block bg-deepteal text-cream text-center py-2.5 rounded-full text-sm hover:bg-inkdark transition"
-            >
-              Get insured →
-            </Link>
-          </div>
+          ) : (
+            <div className="bg-gradient-to-br from-butter/25 to-coral/10 border border-coral/20 rounded-2xl p-6 fade-up" style={{ animationDelay: '.3s' }}>
+              <div className="flex items-start gap-3 mb-3">
+                <div className="text-2xl">🛡️</div>
+                <div>
+                  <div className="font-display text-lg font-medium">Insurance</div>
+                  <div className="text-xs text-ink/60">
+                    {standard.insurance.state === 'pending'
+                      ? 'Your certificate is in review'
+                      : standard.insurance.state === 'expired'
+                        ? 'Your policy expired'
+                        : standard.insurance.state === 'rejected'
+                          ? 'We need a new copy'
+                          : standard.accepted
+                            ? 'Not uploaded yet'
+                            : 'Needed after you’re accepted'}
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-ink/70 leading-relaxed mb-4">
+                Your own liability insurance is part of the Kindred Standard. Kindred doesn&rsquo;t sell insurance or
+                partner with an insurer; here&rsquo;s where caregivers often start.
+              </p>
+              <Link
+                href="/cna/get-insured"
+                className="block bg-deepteal text-cream text-center py-2.5 rounded-full text-sm hover:bg-inkdark transition"
+              >
+                Get insured →
+              </Link>
+            </div>
+          )}
         </div>
       </section>
     </main>
+  );
+}
+
+function docDetail(state: DocState, expiresAt: string | null): string {
+  switch (state) {
+    case 'verified':
+      return expiresAt ? `Verified · through ${formatExpiry(expiresAt)}` : 'Verified';
+    case 'pending':
+      return 'In review';
+    case 'rejected':
+      return 'Needs a new copy';
+    case 'expired':
+      return 'Expired';
+    default:
+      return 'Not on file';
+  }
+}
+
+function Badge({ icon, title, detail, on }: { icon: string; title: string; detail: string; on: boolean }) {
+  return (
+    <div className={`flex items-center gap-3 p-3 rounded-xl border ${on ? 'bg-sage/10 border-sage/30' : 'bg-mist/50 border-ink/10 opacity-70'}`}>
+      <div className="text-xl" aria-hidden="true">{icon}</div>
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-sm">{title}</div>
+        <div className="text-[10px] text-ink/60 font-mono">{detail}</div>
+      </div>
+      <span className={on ? 'text-sage' : 'text-ink/30'} aria-label={on ? 'verified' : 'not verified'}>{on ? '✓' : '—'}</span>
+    </div>
   );
 }

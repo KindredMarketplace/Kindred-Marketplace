@@ -19,6 +19,7 @@ import { getMyAccess, getAccessFor } from '@/lib/membership';
 import { formatCents } from '@/lib/utils/money';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { JobApplyModal } from '@/components/cna/JobApplyModal';
+import { SaveJobButton } from '@/components/cna/SaveJobButton';
 import { WithdrawApplicationButton } from '@/components/cna/WithdrawApplicationButton';
 import { findThreadBetween } from '@/lib/messaging';
 import { getViewer } from '@/lib/viewer';
@@ -92,6 +93,14 @@ export default async function CnaJobDetailPage({ params }: { params: Promise<{ i
   if (!job) notFound();
   const isListed = access?.is_listed === true;
 
+  const { data: savedRow } = await supabase
+    .from('saved_jobs')
+    .select('job_id')
+    .eq('cna_id', user.id)
+    .eq('job_id', job.id)
+    .maybeSingle();
+  const isSaved = !!savedRow;
+
   // Families' names are private (client_profiles is owner-only), so posts
   // always read "A family" until there's a hire.
   const posterFirst = 'A family';
@@ -144,6 +153,7 @@ export default async function CnaJobDetailPage({ params }: { params: Promise<{ i
               </div>
             )}
           </div>
+          <SaveJobButton jobId={job.id} initiallySaved={isSaved} size="md" />
         </div>
       </section>
 

@@ -2170,6 +2170,24 @@ export type Database = {
           },
         ]
       }
+      saved_jobs: {
+        Row: {
+          cna_id: string
+          created_at: string
+          job_id: string
+        }
+        Insert: {
+          cna_id: string
+          created_at?: string
+          job_id: string
+        }
+        Update: {
+          cna_id?: string
+          created_at?: string
+          job_id?: string
+        }
+        Relationships: []
+      }
       saved_searches: {
         Row: {
           created_at: string

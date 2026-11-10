@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { JobFilterChips } from '@/components/cna/JobFilterChips';
 import { JobApplyModal } from '@/components/cna/JobApplyModal';
+import { SaveJobButton } from '@/components/cna/SaveJobButton';
 import { formatCents } from '@/lib/utils/money';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { getMyAccess, getAccessFor } from '@/lib/membership';
@@ -50,7 +51,8 @@ function payRange(min: number | null, max: number | null): string {
   return formatCents((min ?? max)!, { showFraction: false });
 }
 
-export default async function CnaJobsPage() {
+export default async function CnaJobsPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+  const showSaved = (await searchParams).saved === '1';
   const { supabase, user, viewingAs } = await getViewer();
   if (!user) redirect('/login');
 
@@ -61,7 +63,12 @@ export default async function CnaJobsPage() {
     supabase.rpc('browse_open_jobs'),
     viewingAs && user ? getAccessFor(supabase, user.id) : getMyAccess(supabase),
   ]);
-  const jobList = (jobs ?? []).slice(0, 50);
+  // Saved (♡) jobs for this caregiver.
+  const { data: savedRows } = await supabase.from('saved_jobs').select('job_id').eq('cna_id', user.id);
+  const savedSet = new Set((savedRows ?? []).map((r) => r.job_id));
+  const allOpen = jobs ?? [];
+  const savedOpenCount = allOpen.filter((j) => savedSet.has(j.id)).length;
+  const jobList = (showSaved ? allOpen.filter((j) => savedSet.has(j.id)) : allOpen).slice(0, 50);
   const canApply = access?.is_listed === true;
 
   // This CNA's existing applications — so we can label "Applied ✓".
@@ -82,7 +89,9 @@ export default async function CnaJobsPage() {
       <section className="max-w-kindred mx-auto px-6 pt-10 pb-6 fade-up">
         <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">Search &amp; discover</div>
         <h1 className="font-display text-4xl md:text-5xl font-light leading-tight">
-          {jobList.length > 0 ? (
+          {showSaved ? (
+            <>Your <span className="italic font-medium text-gradient">saved jobs.</span></>
+          ) : jobList.length > 0 ? (
             <>
               <span className="italic font-medium text-gradient">{jobList.length} open job{jobList.length === 1 ? '' : 's'}</span> match your area.
             </>
@@ -91,10 +100,30 @@ export default async function CnaJobsPage() {
           )}
         </h1>
         <p className="text-ink/70 mt-2 max-w-2xl">
-          {jobList.length > 0
-            ? 'Real jobs, posted by real families. You set your rate and choose who you work with.'
-            : 'No open jobs in your area right now. As families post jobs, they\u2019ll show up here in real time.'}
+          {showSaved
+            ? jobList.length > 0
+              ? 'Jobs you tapped ♡ on. If a family fills or closes a job, it drops off this list.'
+              : 'Nothing saved yet. Tap the ♡ on any job to keep it here.'
+            : jobList.length > 0
+              ? 'Real jobs, posted by real families. You set your rate and choose who you work with.'
+              : 'No open jobs in your area right now. As families post jobs, they\u2019ll show up here in real time.'}
         </p>
+
+        {/* All / Saved */}
+        <div className="mt-5 flex gap-2">
+          <Link
+            href="/cna/jobs"
+            className={`rounded-full px-4 py-2 text-sm border transition ${!showSaved ? 'bg-ink text-cream border-ink' : 'bg-white border-ink/15 hover:bg-mist'}`}
+          >
+            All jobs
+          </Link>
+          <Link
+            href="/cna/jobs?saved=1"
+            className={`rounded-full px-4 py-2 text-sm border transition ${showSaved ? 'bg-coral text-cream border-coral' : 'bg-white border-ink/15 hover:bg-mist'}`}
+          >
+            ♥ Saved{savedOpenCount ? ` (${savedOpenCount})` : ''}
+          </Link>
+        </div>
 
         {/* Search bar */}
         <div className="mt-6 bg-white border border-ink/15 rounded-2xl p-2 flex flex-col md:flex-row gap-2 shadow-sm">
@@ -274,12 +303,7 @@ export default async function CnaJobsPage() {
                         >
                           View details
                         </Link>
-                        <button
-                          className="w-9 h-9 flex items-center justify-center border border-ink/15 rounded-full hover:bg-coral hover:text-cream hover:border-coral transition"
-                          aria-label="Save"
-                        >
-                          ♡
-                        </button>
+                        <SaveJobButton jobId={job.id} initiallySaved={savedSet.has(job.id)} />
                       </div>
                     </div>
                   </div>

@@ -230,3 +230,27 @@ export async function withdrawApplicationAction(formData: FormData): Promise<Wit
   revalidatePath(`/client/jobs/${app.job_id}`);
   return { ok: true };
 }
+
+/**
+ * Save / unsave a job (the ♡). Returns the new state so the button can
+ * settle on what the database actually holds.
+ */
+export async function toggleSaveJobAction(jobId: string, save: boolean): Promise<{ ok: boolean; saved: boolean }> {
+  if (!/^[0-9a-f-]{36}$/i.test(jobId)) return { ok: false, saved: !save };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, saved: !save };
+
+  if (save) {
+    const { error } = await supabase.from('saved_jobs').upsert({ cna_id: user.id, job_id: jobId }, { onConflict: 'cna_id,job_id', ignoreDuplicates: true });
+    if (error) return { ok: false, saved: false };
+  } else {
+    const { error } = await supabase.from('saved_jobs').delete().eq('cna_id', user.id).eq('job_id', jobId);
+    if (error) return { ok: false, saved: true };
+  }
+  revalidatePath('/cna/jobs');
+  revalidatePath('/cna/dashboard');
+  return { ok: true, saved: save };
+}
