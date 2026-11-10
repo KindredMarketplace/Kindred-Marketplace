@@ -65,6 +65,24 @@
     color: transparent;
   }
 
+  /* Bottom sheet (phone "Me" menu) slides up */
+  .sheet-up {
+    animation: sheetUp 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes sheetUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sheet-up {
+      animation: none;
+    }
+  }
+
   /* Fade-up entrance animation */
   .fade-up {
     animation: fadeUp 0.7s ease-out backwards;

@@ -46,7 +46,7 @@ export function PortalMobileMenu({
   const totalBadge = links.reduce((n, l) => n + (l.badge ?? 0), 0);
 
   return (
-    <div ref={ref} className="xl:hidden relative">
+    <div ref={ref} className="hidden lg:block xl:hidden relative">
       <button
         type="button"
         aria-label={open ? 'Close menu' : 'Open menu'}

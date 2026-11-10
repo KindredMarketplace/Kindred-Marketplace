@@ -26,6 +26,7 @@ import { loadUnreadTotal } from '@/lib/messaging';
 import { InboxRealtimeRefresh } from '@/components/messaging/InboxRealtimeRefresh';
 import { PresencePinger } from '@/components/messaging/PresencePinger';
 import { getViewer } from '@/lib/viewer';
+import { PortalTabBar } from '@/components/PortalTabBar';
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const { supabase, user } = await getViewer();
@@ -35,7 +36,7 @@ export default async function ClientLayout({ children }: { children: React.React
   // booking for the shell. All in parallel. Also fetch the unread message
   // count for the nav badge.
   const [userRes, profileRes, recipientsRes, unreadCount] = await Promise.all([
-    supabase.from('users').select('full_name, email').eq('id', user.id).single(),
+    supabase.from('users').select('full_name, email, avatar_url').eq('id', user.id).single(),
     supabase.from('client_profiles').select('name, zip, city, state').eq('user_id', user.id).maybeSingle(),
     supabase.from('care_recipients').select('id, name').eq('client_id', user.id),
     loadUnreadTotal(supabase, user.id),
@@ -158,6 +159,32 @@ export default async function ClientLayout({ children }: { children: React.React
 
       {/* FOOTER */}
       <SiteFooter contactHref="/client/help" />
+
+      {/* Room for the bottom tab bar on phones/tablets */}
+      <div className="lg:hidden h-[calc(4.5rem+env(safe-area-inset-bottom))]" aria-hidden="true" />
+      <PortalTabBar
+        tabs={[
+          { href: '/client/dashboard', label: 'Home', icon: 'home' },
+          { href: '/client/messages', label: 'Messages', icon: 'chat', badge: unreadCount },
+          { href: '/client/browse', label: 'Find care', icon: 'search', center: true },
+          { href: '/client/my-care', label: 'My care', icon: 'heart', match: ['/client/jobs'] },
+        ]}
+        me={{
+          name: fullName,
+          subtitle: email,
+          photoUrl: me?.avatar_url ?? null,
+          initials: userInitials,
+          avatarClass: avClass,
+          links: [
+            { href: '/client/post-job', label: 'Post a job', emoji: '➕', accent: true },
+            { href: '/client/profile', label: 'My profile', emoji: '👤' },
+            { href: '/client/membership', label: 'Membership', emoji: '💳' },
+            { href: '/client/account', label: 'Account', emoji: '⚙️' },
+            { href: '/client/help', label: 'Help', emoji: '💬' },
+          ],
+          logoutAction,
+        }}
+      />
     </div>
   );
 }

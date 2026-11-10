@@ -12,6 +12,7 @@ import { initials, avatarClass } from '@/lib/utils/avatar';
 import { getViewer } from '@/lib/viewer';
 import { getStandardStatus, formatExpiry, type DocState } from '@/lib/standard';
 import { ProfileEditor } from '@/components/cna/ProfileEditor';
+import { AvatarUpload } from '@/components/cna/AvatarUpload';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +54,7 @@ export default async function CnaProfilePage() {
             A great profile means more job invites. Keep it current so the right families find you.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             href="/cna/profile/preview"
             className="bg-white border border-ink/15 px-4 py-2.5 text-sm rounded-full hover:bg-mist transition"
@@ -70,60 +71,45 @@ export default async function CnaProfilePage() {
         </div>
       </section>
 
-      {/* TOP PROFILE PREVIEW CARD */}
+      {/* TOP PROFILE CARD */}
       <section className="mb-10 fade-up" style={{ animationDelay: '.1s' }}>
         <div className="bg-white border border-ink/10 rounded-3xl overflow-hidden">
-          <div className="bg-gradient-to-br from-deepteal via-teal to-sky h-32 relative grain" />
-          <div className="px-8 pb-8 -mt-16 relative">
-            <div className="flex items-end gap-6 flex-wrap">
-              <div className={`w-32 h-32 rounded-3xl ${avClass} ring-4 ring-cream flex items-center justify-center text-cream font-display text-5xl font-medium shadow-xl`}>
-                {userInitials}
-              </div>
-              <div className="flex-1 min-w-0 pb-2">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <div className="text-xs font-mono uppercase tracking-widest text-ink/50">Caregiver</div>
-                  {standard.allMet && (
-                    <span className="text-[10px] bg-sage/20 text-deepteal px-2 py-0.5 rounded-full font-medium">✓ Kindred Standard</span>
-                  )}
-                  {badgeOn(standard.l2bg.state) && (
-                    <span className="text-[10px] bg-mist text-deepteal px-2 py-0.5 rounded-full font-medium">Level 2 background check</span>
-                  )}
-                  {badgeOn(standard.identity.state) && (
-                    <span className="text-[10px] bg-mist text-deepteal px-2 py-0.5 rounded-full font-medium">ID verified</span>
-                  )}
-                  {badgeOn(standard.insurance.state) && (
-                    <span className="text-[10px] bg-mist text-deepteal px-2 py-0.5 rounded-full font-medium">Insured</span>
-                  )}
-                </div>
-                <h2 className="font-display text-3xl lg:text-4xl font-medium">{publicName}</h2>
-                <div className="text-ink/70 text-sm mt-1.5 flex flex-wrap items-center gap-2">
+          <div className="bg-gradient-to-br from-deepteal via-teal to-sky h-24 sm:h-32 relative grain" />
+          <div className="px-5 sm:px-8 pb-6 sm:pb-8 -mt-12 sm:-mt-16 relative">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
+              <AvatarUpload userId={user.id} photoUrl={profile?.photo_url ?? null} initials={userInitials} avatarClass={avClass} />
+              <div className="flex-1 min-w-0 sm:pb-2">
+                <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-1">Caregiver</div>
+                <h2 className="font-display text-3xl lg:text-4xl font-medium leading-tight break-words">{publicName}</h2>
+                <div className="text-ink/70 text-sm mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                   {profile?.rating_avg != null && profile?.rating_count ? (
-                    <>
-                      <span className="text-coral">★ {Number(profile.rating_avg).toFixed(1)}</span>
-                      <span>({profile.rating_count} reviews)</span>
-                      <span className="opacity-40">·</span>
-                    </>
+                    <span className="text-coral whitespace-nowrap">★ {Number(profile.rating_avg).toFixed(1)} ({profile.rating_count} reviews)</span>
                   ) : (
-                    <>
-                      <span className="text-ink/50">No reviews yet</span>
-                      <span className="opacity-40">·</span>
-                    </>
+                    <span className="text-ink/50 whitespace-nowrap">No reviews yet</span>
                   )}
                   {profile?.years_experience != null && (
                     <>
-                      <span>{profile.years_experience} years experience</span>
                       <span className="opacity-40">·</span>
+                      <span className="whitespace-nowrap">{profile.years_experience} years experience</span>
                     </>
                   )}
-                  {rateText && <span className="font-mono">{rateText}/hr</span>}
+                  {rateText && (
+                    <>
+                      <span className="opacity-40">·</span>
+                      <span className="font-mono whitespace-nowrap">{rateText}/hr</span>
+                    </>
+                  )}
                 </div>
               </div>
-              <div className="text-right pb-2">
-                <div className="text-xs text-ink/50 font-mono mb-1">Profile views</div>
-                <div className="font-display text-2xl font-medium">—</div>
-                <div className="text-[10px] text-ink/50">last 30 days</div>
-              </div>
             </div>
+            {(standard.allMet || badgeOn(standard.l2bg.state) || badgeOn(standard.identity.state) || badgeOn(standard.insurance.state)) && (
+              <div className="mt-5 flex flex-wrap gap-2">
+                {standard.allMet && <Pill strong>✓ Kindred Standard</Pill>}
+                {badgeOn(standard.l2bg.state) && <Pill>🛡️ Level 2 background check</Pill>}
+                {badgeOn(standard.identity.state) && <Pill>🪪 ID verified</Pill>}
+                {badgeOn(standard.insurance.state) && <Pill>📄 Insured</Pill>}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -285,5 +271,17 @@ function Badge({ icon, title, detail, on }: { icon: string; title: string; detai
       </div>
       <span className={on ? 'text-sage' : 'text-ink/30'} aria-label={on ? 'verified' : 'not verified'}>{on ? '✓' : '—'}</span>
     </div>
+  );
+}
+
+function Pill({ children, strong }: { children: React.ReactNode; strong?: boolean }) {
+  return (
+    <span
+      className={`whitespace-nowrap text-xs px-3 py-1 rounded-full font-medium ${
+        strong ? 'bg-sage/25 text-deepteal' : 'bg-mist text-deepteal'
+      }`}
+    >
+      {children}
+    </span>
   );
 }

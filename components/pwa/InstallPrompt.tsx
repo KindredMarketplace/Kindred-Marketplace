@@ -74,7 +74,7 @@ export function InstallPrompt() {
     <div
       role="dialog"
       aria-label="Install Kindred"
-      className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:w-[360px] z-[60] bg-white border border-ink/10 rounded-2xl shadow-xl p-4 flex gap-3 items-start"
+      className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:w-[360px] z-[60] bg-white border border-ink/10 rounded-2xl shadow-xl p-4 flex gap-3 items-start"
     >
       <KindredMark size={40} className="rounded-xl shrink-0" />
       <div className="flex-1 min-w-0">

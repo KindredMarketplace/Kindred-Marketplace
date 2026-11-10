@@ -16,11 +16,21 @@ import { KindredMark } from '@/components/KindredMark';
 import { SiteFooter } from '@/components/SiteFooter';
 import { CnaNavLinks, CnaMobileMenu } from '@/components/cna/CnaNavLinks';
 import { WelcomeCelebration } from '@/components/cna/WelcomeCelebration';
+import { PortalTabBar } from '@/components/PortalTabBar';
 import { initials, avatarClass } from '@/lib/utils/avatar';
 import { loadUnreadTotal } from '@/lib/messaging';
 import { InboxRealtimeRefresh } from '@/components/messaging/InboxRealtimeRefresh';
 import { PresencePinger } from '@/components/messaging/PresencePinger';
 import { getViewer } from '@/lib/viewer';
+
+const STAGE_SUBTITLE: Record<string, string> = {
+  incomplete: 'Application in progress',
+  submitted: 'Application in review',
+  interviewing: 'Interview stage',
+  verifying: 'Accepted · finishing onboarding',
+  approved: 'Kindred caregiver',
+  waitlisted: 'On the waitlist',
+};
 
 export default async function CnaLayout({ children }: { children: React.ReactNode }) {
   const { supabase, user, viewingAs } = await getViewer();
@@ -32,7 +42,7 @@ export default async function CnaLayout({ children }: { children: React.ReactNod
     supabase.from('users').select('full_name, email').eq('id', user.id).single(),
     supabase
       .from('cna_profiles')
-      .select('display_name, rating_avg, rating_count, years_experience, service_zip, tier, availability_status, application_status, welcome_seen_at')
+      .select('display_name, photo_url, rating_avg, rating_count, years_experience, service_zip, tier, availability_status, application_status, welcome_seen_at')
       .eq('user_id', user.id)
       .maybeSingle(),
     loadUnreadTotal(supabase, user.id),
@@ -96,11 +106,16 @@ export default async function CnaLayout({ children }: { children: React.ReactNod
               Help
             </Link>
             <Link href="/cna/settings" className="flex items-center gap-2 hover:text-sage transition">
-              <span
-                className={`w-6 h-6 rounded-full ${avClass} flex items-center justify-center text-cream font-medium text-[10px]`}
-              >
-                {userInitials}
-              </span>
+              {profile?.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.photo_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+              ) : (
+                <span
+                  className={`w-6 h-6 rounded-full ${avClass} flex items-center justify-center text-cream font-medium text-[10px]`}
+                >
+                  {userInitials}
+                </span>
+              )}
               <span className="font-medium">{firstName}</span>
             </Link>
           </div>
@@ -123,7 +138,7 @@ export default async function CnaLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/cna/jobs"
-              className="inline-flex items-center whitespace-nowrap bg-ink text-cream px-4 py-2 rounded-full text-sm hover:bg-coral transition"
+              className="hidden lg:inline-flex items-center whitespace-nowrap bg-ink text-cream px-4 py-2 rounded-full text-sm hover:bg-coral transition"
             >
               Find work
             </Link>
@@ -149,6 +164,35 @@ export default async function CnaLayout({ children }: { children: React.ReactNod
 
       {/* FOOTER */}
       <SiteFooter contactHref="/cna/help" />
+
+      {/* Room for the bottom tab bar on phones/tablets */}
+      <div className="lg:hidden h-[calc(4.5rem+env(safe-area-inset-bottom))]" aria-hidden="true" />
+      <PortalTabBar
+        tabs={[
+          { href: '/cna/dashboard', label: 'Home', icon: 'home' },
+          { href: '/cna/messages', label: 'Messages', icon: 'chat', badge: unreadCount },
+          { href: '/cna/jobs', label: 'Jobs', icon: 'search', center: true },
+          { href: '/cna/schedule', label: 'Schedule', icon: 'calendar' },
+        ]}
+        me={{
+          name: fullName,
+          subtitle: STAGE_SUBTITLE[profile?.application_status ?? ''] ?? 'Caregiver',
+          photoUrl: profile?.photo_url ?? null,
+          initials: userInitials,
+          avatarClass: avClass,
+          links: [
+            { href: '/cna/profile', label: 'My profile', emoji: '👤' },
+            { href: '/cna/compliance', label: 'Credentials', emoji: '🛡️', dot: profile?.application_status === 'verifying' },
+            { href: '/cna/jobs?saved=1', label: 'Saved jobs', emoji: '♥' },
+            { href: '/cna/membership', label: 'Membership', emoji: '💳' },
+            { href: '/cna/get-insured', label: 'Get insured', emoji: '📄' },
+            { href: '/cna/resources', label: 'Resources', emoji: '🎓' },
+            { href: '/cna/settings', label: 'Settings', emoji: '⚙️' },
+            { href: '/cna/help', label: 'Help', emoji: '💬' },
+          ],
+          logoutAction,
+        }}
+      />
     </div>
   );
 }

@@ -77,3 +77,38 @@ export async function saveProfileAction(_prev: ProfileSaveState, formData: FormD
   revalidatePath('/browse');
   return { ok: true, message: 'Saved. Families see the update right away.' };
 }
+
+/**
+ * After the browser uploads a new photo to kindred-avatars/<uid>/..., record
+ * it as the profile photo and clean up older photos in that folder.
+ */
+export async function setProfilePhotoAction(path: string): Promise<{ ok: boolean; url?: string; message?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: 'Please log in again.' };
+  if (!new RegExp(`^${user.id}/avatar-\\d{10,16}\\.(jpg|jpeg|png|webp)$`).test(path)) {
+    return { ok: false, message: 'That upload didn’t look right. Please try again.' };
+  }
+
+  const bucket = supabase.storage.from('kindred-avatars');
+  const { data: files } = await bucket.list(user.id, { limit: 100 });
+  if (!(files ?? []).some((f) => `${user.id}/${f.name}` === path)) {
+    return { ok: false, message: 'We couldn’t find that photo. Please try again.' };
+  }
+  const url = bucket.getPublicUrl(path).data.publicUrl;
+
+  const [{ error: pErr }, { error: uErr }] = await Promise.all([
+    supabase.from('cna_profiles').update({ photo_url: url }).eq('user_id', user.id),
+    supabase.from('users').update({ avatar_url: url }).eq('id', user.id),
+  ]);
+  if (pErr || uErr) return { ok: false, message: 'The photo uploaded but didn’t save. Please try again.' };
+
+  const old = (files ?? []).map((f) => `${user.id}/${f.name}`).filter((p) => p !== path && /\/avatar-/.test(p));
+  if (old.length) await bucket.remove(old);
+
+  revalidatePath('/cna', 'layout');
+  revalidatePath('/browse');
+  return { ok: true, url };
+}

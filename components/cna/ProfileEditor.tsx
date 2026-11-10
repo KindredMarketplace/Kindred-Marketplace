@@ -93,7 +93,7 @@ export function ProfileEditor({ initial }: { initial: Initial }) {
         </label>
       </div>
 
-      <div className="sticky bottom-4 z-10 flex items-center justify-between gap-3 rounded-2xl bg-white/95 backdrop-blur border border-ink/10 p-3 shadow-lg">
+      <div className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-4 z-10 flex items-center justify-between gap-3 rounded-2xl bg-white/95 backdrop-blur border border-ink/10 p-3 shadow-lg">
         <p role="status" className={`text-sm px-2 ${state ? (state.ok ? 'text-deepteal' : 'text-coral') : 'text-ink/50'}`}>
           {state?.message ?? 'Changes show to families once you save.'}
         </p>
