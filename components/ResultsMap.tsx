@@ -54,7 +54,7 @@ export function ResultsMap({
         if (cancelled || !box.current) return;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         lib.current = (mod as any).default ?? mod;
-        // The worker file is copied to /vendor at build (scripts/copy-maplibre-worker.cjs).
+        // The worker file is copied to /vendor at build (tools/copy-maplibre-worker.cjs).
         lib.current.setWorkerUrl?.('/vendor/maplibre-gl-worker.mjs');
         const m = new lib.current.Map({
           container: box.current,

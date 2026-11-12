@@ -1,6 +1,7 @@
 // Copies MapLibre's map-drawing worker next to the site so the map can load
 // it from our own domain (the bundler doesn't copy it). Runs before
-// `npm run build` / `npm run dev`. Output is git-ignored.
+// `npm run build` / `npm run dev`. Output is git-ignored. Lives in tools/,
+// not scripts/, because .vercelignore leaves scripts/ out of deploys.
 const fs = require('fs');
 const path = require('path');
 const src = path.join(__dirname, '..', 'node_modules', 'maplibre-gl', 'dist', 'maplibre-gl-worker.mjs');

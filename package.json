@@ -4,9 +4,9 @@
   "private": true,
   "description": "Kindred \u2014 Florida CNA marketplace connecting families with vetted caregivers",
   "scripts": {
-    "predev": "node scripts/copy-maplibre-worker.cjs",
+    "predev": "node tools/copy-maplibre-worker.cjs",
     "dev": "next dev",
-    "prebuild": "node scripts/copy-maplibre-worker.cjs",
+    "prebuild": "node tools/copy-maplibre-worker.cjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
