@@ -36,18 +36,18 @@ export default async function BrowsePage() {
   return (
     <div className="min-h-screen bg-cream">
       <SiteHeader />
-      <main className="max-w-[1400px] mx-auto px-6 py-12">
-        <section className="mb-8 fade-up">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 lg:py-12">
+        <section className="mb-5 lg:mb-8 fade-up">
           <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">
             Browse caregivers
           </div>
-          <h1 className="font-display text-4xl md:text-5xl font-light leading-tight">
+          <h1 className="font-display text-3xl md:text-5xl font-light leading-tight">
             <span className="italic font-medium text-gradient">
               {caregivers.length} {caregivers.length === 1 ? 'caregiver' : 'caregivers'}
             </span>{' '}
             near Gainesville, FL
           </h1>
-          <p className="text-ink/70 mt-2 max-w-2xl">
+          <p className="hidden md:block text-ink/70 mt-2 max-w-2xl">
             Every caregiver here meets the{' '}
             <Link href="/kindred-standard" className="underline decoration-sage underline-offset-4">Kindred Standard</Link>: a
             personal interview, 1,500+ hours of hands-on experience, a Level 2 background check, a

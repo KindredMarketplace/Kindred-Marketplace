@@ -14,7 +14,7 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { JobFilterChips } from '@/components/cna/JobFilterChips';
+import { FilterableList, type ListItem, type ListFilter } from '@/components/FilterableList';
 import { JobApplyModal } from '@/components/cna/JobApplyModal';
 import { SaveJobButton } from '@/components/cna/SaveJobButton';
 import { formatCents } from '@/lib/utils/money';
@@ -83,261 +83,152 @@ export default async function CnaJobsPage({ searchParams }: { searchParams: Prom
     (myApps ?? []).forEach((a) => appliedSet.add(a.job_id));
   }
 
-  return (
-    <>
-      {/* HEADER */}
-      <section className="max-w-kindred mx-auto px-6 pt-10 pb-6 fade-up">
-        <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-2">Search &amp; discover</div>
-        <h1 className="font-display text-4xl md:text-5xl font-light leading-tight">
-          {showSaved ? (
-            <>Your <span className="italic font-medium text-gradient">saved jobs.</span></>
-          ) : jobList.length > 0 ? (
-            <>
-              <span className="italic font-medium text-gradient">{jobList.length} open job{jobList.length === 1 ? '' : 's'}</span> match your area.
-            </>
-          ) : (
-            <>Find <span className="italic font-medium text-gradient">your next shift.</span></>
-          )}
-        </h1>
-        <p className="text-ink/70 mt-2 max-w-2xl">
-          {showSaved
-            ? jobList.length > 0
-              ? 'Jobs you tapped ♡ on. If a family fills or closes a job, it drops off this list.'
-              : 'Nothing saved yet. Tap the ♡ on any job to keep it here.'
-            : jobList.length > 0
-              ? 'Real jobs, posted by real families. You set your rate and choose who you work with.'
-              : 'No open jobs in your area right now. As families post jobs, they\u2019ll show up here in real time.'}
-        </p>
+  // Filters work on these (all real fields); cards are rendered here on the server.
+  const items: ListItem[] = jobList.map((job) => {
+    const pay = job.budget_max_cents ?? job.budget_min_cents;
+    return {
+      id: job.id,
+      text: [job.title, job.description, ...(job.services_needed ?? []), job.city, job.zip].filter(Boolean).join(' ').replace(/_/g, ' ').toLowerCase(),
+      nums: { pay: pay != null ? pay / 100 : null },
+      tags: { type: [job.schedule_type], services: job.services_needed ?? [] },
+      date: job.posted_at,
+    };
+  });
+  const typeOptions = [...new Set(jobList.map((j) => j.schedule_type))].map((t) => ({ value: t, label: SCHEDULE_LABEL[t] ?? t }));
+  const serviceOptions = [...new Set(jobList.flatMap((j) => j.services_needed ?? []))]
+    .sort()
+    .map((t: string) => ({ value: t, label: t.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) }));
+  const filters: ListFilter[] = [
+    { kind: 'min', key: 'pay', label: 'Pay', prefix: '$', suffix: '/hr', min: 15, max: 50, step: 1 },
+    { kind: 'tags', key: 'type', label: 'Type of job', options: typeOptions },
+    { kind: 'tags', key: 'services', label: 'Care needed', options: serviceOptions },
+    { kind: 'recent', label: 'Posted', options: [{ days: 1, label: 'Today' }, { days: 7, label: 'This week' }, { days: 30, label: 'This month' }] },
+  ];
 
-        {/* All / Saved */}
-        <div className="mt-5 flex gap-2">
-          <Link
-            href="/cna/jobs"
-            className={`rounded-full px-4 py-2 text-sm border transition ${!showSaved ? 'bg-ink text-cream border-ink' : 'bg-white border-ink/15 hover:bg-mist'}`}
-          >
-            All jobs
-          </Link>
-          <Link
-            href="/cna/jobs?saved=1"
-            className={`rounded-full px-4 py-2 text-sm border transition ${showSaved ? 'bg-coral text-cream border-coral' : 'bg-white border-ink/15 hover:bg-mist'}`}
-          >
-            ♥ Saved{savedOpenCount ? ` (${savedOpenCount})` : ''}
-          </Link>
-        </div>
-
-        {/* Search bar */}
-        <div className="mt-6 bg-white border border-ink/15 rounded-2xl p-2 flex flex-col md:flex-row gap-2 shadow-sm">
-          <input
-            type="text"
-            placeholder="Try 'dementia care' or 'evenings only'"
-            className="flex-1 px-4 py-3 text-sm bg-transparent focus:outline-none"
-          />
-          <div className="hidden md:block w-px bg-ink/10" />
-          <input
-            type="text"
-            defaultValue="Gainesville, FL"
-            placeholder="📍 Area to search"
-            className="md:w-64 px-4 py-3 text-sm bg-transparent focus:outline-none"
-          />
-          <button className="bg-deepteal text-cream px-6 py-3 rounded-xl md:rounded-full text-sm font-medium hover:bg-inkdark transition">
-            Search
-          </button>
-        </div>
-
-        <JobFilterChips />
-
-        {!canApply && (
-          <div className="mt-6 bg-gradient-to-br from-mist/70 to-creamdark/70 border border-ink/10 rounded-2xl p-5 flex flex-col md:flex-row md:items-center gap-4 justify-between">
-            <div>
-              <div className="font-display text-lg font-medium">You&apos;re seeing the preview.</div>
-              <p className="text-sm text-ink/70 mt-1 max-w-xl">
-                These are real job posts. Exact addresses and applying open up once you meet the Kindred
-                Standard and your membership is active.
-              </p>
-            </div>
-            <Link href="/cna/membership" className="shrink-0 bg-deepteal text-cream px-5 py-2.5 rounded-full text-sm font-medium hover:bg-inkdark transition text-center">
-              See what&apos;s left →
-            </Link>
+  const cards: Record<string, React.ReactNode> = {};
+  for (const job of jobList) {
+    const posterName = 'A family';
+    const av = avatarClass(posterName);
+    const isApplied = appliedSet.has(job.id);
+    cards[job.id] = (
+      <div className="card-hover bg-white border border-ink/10 rounded-2xl p-5 relative h-full">
+        <div className="flex gap-4">
+          <div className={`hidden sm:flex w-14 h-14 rounded-2xl ${av} items-center justify-center text-cream font-display text-xl font-medium flex-shrink-0`}>
+            {initials(posterName)}
           </div>
-        )}
-      </section>
-
-      {/* MAIN CONTENT */}
-      <main className="max-w-kindred mx-auto px-6 pb-16 grid lg:grid-cols-12 gap-6">
-        {/* SIDEBAR FILTERS (visual parity) */}
-        <aside className="lg:col-span-3 lg:sticky lg:top-24 lg:self-start space-y-6">
-          <div className="bg-white border border-ink/10 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display text-lg font-medium">Filters</h3>
-              <button className="text-xs text-coral hover:underline">Clear all</button>
-            </div>
-
-            <div className="mb-5">
-              <label className="text-xs uppercase tracking-widest text-ink/50 font-mono mb-2 block">Max distance from home</label>
-              <div className="bg-mist/40 rounded-lg p-3">
-                <div className="flex justify-between text-xs mb-2"><span>Within</span><span className="font-mono font-medium">15 mi</span></div>
-                <input type="range" min={1} max={50} defaultValue={15} className="w-full" />
-                <div className="flex justify-between text-[10px] text-ink/40 font-mono mt-1"><span>1 mi</span><span>50 mi</span></div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-display text-lg font-medium leading-tight">{job.title}</div>
+                <div className="text-xs text-ink/60 mt-1">
+                  Posted by <span className="text-deepteal">a family</span> · {postedAgo(job.posted_at)}
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="font-display text-xl font-medium whitespace-nowrap">
+                  {payRange(job.budget_min_cents, job.budget_max_cents)}<span className="text-sm text-ink/50">/hr</span>
+                </div>
+                <div className="text-[10px] text-ink/50 font-mono">
+                  {job.hours_per_week ? `${job.hours_per_week} hrs/week` : SCHEDULE_LABEL[job.schedule_type] ?? job.schedule_type}
+                </div>
               </div>
             </div>
-
-            <div className="mb-5">
-              <label className="text-xs uppercase tracking-widest text-ink/50 font-mono mb-2 block">Min hourly pay</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/50">$</span>
-                <input type="number" defaultValue={22} className="w-full pl-7 pr-4 py-2 text-sm bg-white border border-ink/15 rounded-lg focus:outline-none focus:border-teal" />
-              </div>
+            <p className="text-sm text-ink/75 mt-2 leading-relaxed line-clamp-3">{job.description}</p>
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {(job.services_needed ?? []).slice(0, 4).map((t: string) => (
+                <span key={t} className="text-[10px] bg-mist/70 px-2.5 py-1 rounded-full border border-teal/20">
+                  {t.replace(/_/g, ' ')}
+                </span>
+              ))}
+              <span className="text-[10px] bg-coral/15 text-coral px-2.5 py-1 rounded-full border border-coral/30 font-medium">
+                📍 {job.city ? `${job.city} · ` : ''}{job.zip}
+              </span>
             </div>
-
-            <div className="mb-5">
-              <label className="text-xs uppercase tracking-widest text-ink/50 font-mono mb-2 block">Job type</label>
-              <div className="space-y-2 text-sm">
-                {['Recurring weekly', 'One-time', 'Live-in', 'On-call'].map((label) => (
-                  <label key={label} className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="rounded text-deepteal focus:ring-teal" /> {label}
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t border-ink/10 pt-4">
-              <button className="w-full flex items-center justify-center gap-2 bg-gradient-to-br from-sage/15 to-teal/15 hover:from-sage/25 hover:to-teal/25 border border-teal/30 text-deepteal text-sm py-2.5 rounded-full transition font-medium">
-                ✏️ Draw service area on map
-              </button>
-              <div className="text-[10px] text-ink/50 mt-2 text-center font-mono">Only show jobs in the area you drew</div>
-            </div>
-          </div>
-        </aside>
-
-        {/* RESULTS */}
-        <section className="lg:col-span-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-ink/70">
-              {jobList.length > 0 ? (
-                <>
-                  <span className="font-medium text-ink">{jobList.length}</span> open job{jobList.length === 1 ? '' : 's'} · sorted by newest
-                </>
+            <div className="flex gap-2 mt-4 items-center">
+              {canApply || isApplied ? (
+                <JobApplyModal
+                  jobId={job.id}
+                  jobTitle={job.title}
+                  budgetHint={`${payRange(job.budget_min_cents, job.budget_max_cents)}/hr · ${SCHEDULE_LABEL[job.schedule_type] ?? job.schedule_type}`}
+                  alreadyApplied={isApplied}
+                />
               ) : (
-                'No jobs to show'
+                <Link href="/cna/membership" className="flex-1 text-xs py-2 bg-deepteal text-cream rounded-full text-center hover:bg-inkdark transition">
+                  🔒 Unlock to apply
+                </Link>
               )}
+              <Link href={`/cna/jobs/${job.id}`} className="flex-1 text-xs py-2 border border-ink/15 rounded-full hover:bg-mist transition text-center">
+                View details
+              </Link>
+              <SaveJobButton jobId={job.id} initiallySaved={savedSet.has(job.id)} />
             </div>
-            <select className="text-sm bg-white border border-ink/15 rounded-full px-4 py-2 focus:outline-none focus:border-teal">
-              <option>Newest first</option>
-              <option>Highest pay</option>
-              <option>Closest to me</option>
-            </select>
           </div>
+        </div>
+      </div>
+    );
+  }
 
-          {jobList.length === 0 ? (
-            <div className="bg-white border border-dashed border-ink/20 rounded-2xl p-12 text-center">
-              <div className="text-3xl mb-3">🔍</div>
-              <h3 className="font-display text-xl font-medium mb-1">No open jobs yet</h3>
-              <p className="text-sm text-ink/60 max-w-sm mx-auto mb-5">
-                Jobs appear here in real time as families post them. Make sure your service area and
-                availability are up to date — jobs match based on those.
+  const tab = (on: boolean, coral?: boolean) =>
+    `rounded-full px-4 py-2 text-sm border transition ${on ? (coral ? 'bg-coral text-cream border-coral' : 'bg-ink text-cream border-ink') : 'bg-white border-ink/15 hover:bg-mist'}`;
+
+  return (
+    <main className="max-w-kindred mx-auto px-4 sm:px-6 pt-5 lg:pt-10 pb-16">
+      <h1 className="font-display text-3xl md:text-4xl font-light leading-tight mb-4 fade-up">
+        {showSaved ? (
+          <>Your <span className="italic font-medium text-gradient">saved jobs</span></>
+        ) : (
+          <>Find <span className="italic font-medium text-gradient">work</span></>
+        )}
+      </h1>
+
+      <FilterableList
+        items={items}
+        cards={cards}
+        filters={filters}
+        sorts={[
+          { key: 'newest', label: 'Newest', by: 'date', dir: 'desc' },
+          { key: 'pay', label: 'Highest pay', by: 'pay', dir: 'desc' },
+        ]}
+        searchPlaceholder="Search jobs, e.g. dementia, evenings"
+        noun={['job', 'jobs']}
+        listClassName="grid gap-4 lg:grid-cols-2"
+        toolbarExtra={
+          <>
+            <Link href="/cna/jobs" className={tab(!showSaved)}>All jobs</Link>
+            <Link href="/cna/jobs?saved=1" className={tab(showSaved, true)}>
+              ♥ Saved{savedOpenCount ? ` (${savedOpenCount})` : ''}
+            </Link>
+          </>
+        }
+        banner={
+          !canApply ? (
+            <div className="bg-gradient-to-br from-mist/70 to-creamdark/70 border border-ink/10 rounded-2xl px-4 py-3 flex items-center gap-3 justify-between">
+              <p className="text-sm text-ink/75">
+                <span className="font-medium text-ink">Preview.</span> Addresses and applying open once you meet the Kindred Standard.
               </p>
+              <Link href="/cna/membership" className="shrink-0 text-sm text-deepteal font-medium hover:text-coral whitespace-nowrap">
+                What&apos;s left →
+              </Link>
+            </div>
+          ) : null
+        }
+        empty={
+          <div className="bg-white border border-dashed border-ink/20 rounded-2xl p-10 text-center">
+            <div className="text-3xl mb-3">{showSaved ? '♡' : '🔍'}</div>
+            <h3 className="font-display text-xl font-medium mb-1">{showSaved ? 'Nothing saved yet' : 'No open jobs yet'}</h3>
+            <p className="text-sm text-ink/60 max-w-sm mx-auto mb-5">
+              {showSaved
+                ? 'Tap the ♡ on any job to keep it here.'
+                : 'Jobs appear here as families post them. Keep your service area and availability up to date.'}
+            </p>
+            {!showSaved && (
               <Link href="/cna/schedule" className="inline-block bg-deepteal text-cream px-5 py-2.5 rounded-full text-sm hover:bg-inkdark transition">
                 Update availability →
               </Link>
-            </div>
-          ) : (
-            jobList.map((job) => {
-              const posterName = 'A family';
-              const posterFirst = posterName.split(' ')[0];
-              const av = avatarClass(posterName);
-              const isApplied = appliedSet.has(job.id);
-              return (
-                <div key={job.id} className="card-hover bg-white border border-ink/10 rounded-2xl p-5 relative">
-                  <div className="flex gap-4">
-                    <div className={`w-14 h-14 rounded-2xl ${av} flex items-center justify-center text-cream font-display text-xl font-medium flex-shrink-0`}>
-                      {initials(posterName)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3 flex-wrap mt-1">
-                        <div className="min-w-0">
-                          <div className="font-display text-lg font-medium leading-tight">{job.title}</div>
-                          <div className="text-xs text-ink/60 mt-1">
-                            Posted by <span className="text-deepteal">{posterFirst}</span>
-                            {' · '}{postedAgo(job.posted_at)}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-display text-xl font-medium">
-                            {payRange(job.budget_min_cents, job.budget_max_cents)}<span className="text-sm text-ink/50">/hr</span>
-                          </div>
-                          <div className="text-[10px] text-ink/50 font-mono">
-                            {job.hours_per_week ? `${job.hours_per_week} hrs/week` : SCHEDULE_LABEL[job.schedule_type] ?? job.schedule_type}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-sm text-ink/75 mt-2 leading-relaxed line-clamp-3">{job.description}</p>
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {(job.services_needed ?? []).slice(0, 4).map((t: string) => (
-                          <span key={t} className="text-[10px] bg-mist/70 px-2.5 py-1 rounded-full border border-teal/20">
-                            {t.replace(/_/g, ' ')}
-                          </span>
-                        ))}
-                        <span className="text-[10px] bg-coral/15 text-coral px-2.5 py-1 rounded-full border border-coral/30 font-medium">
-                          📍 {job.city ? `${job.city} · ` : ''}{job.zip}
-                        </span>
-                      </div>
-                      <div className="flex gap-2 mt-4 items-center">
-                        {canApply || isApplied ? (
-                          <JobApplyModal
-                            jobId={job.id}
-                            jobTitle={job.title}
-                            budgetHint={`${payRange(job.budget_min_cents, job.budget_max_cents)}/hr · ${SCHEDULE_LABEL[job.schedule_type] ?? job.schedule_type}`}
-                            alreadyApplied={isApplied}
-                          />
-                        ) : (
-                          <Link
-                            href="/cna/membership"
-                            className="flex-1 text-xs py-2 bg-deepteal text-cream rounded-full text-center hover:bg-inkdark transition"
-                          >
-                            🔒 Unlock to apply
-                          </Link>
-                        )}
-                        <Link
-                          href={`/cna/jobs/${job.id}`}
-                          className="flex-1 text-xs py-2 border border-ink/15 rounded-full hover:bg-mist transition text-center"
-                        >
-                          View details
-                        </Link>
-                        <SaveJobButton jobId={job.id} initiallySaved={savedSet.has(job.id)} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </section>
-
-        {/* MAP placeholder */}
-        <aside className="hidden lg:block lg:col-span-4 lg:sticky lg:top-24 lg:self-start">
-          <div className="bg-white border border-ink/10 rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b border-ink/10">
-              <div className="font-display text-base font-medium">Jobs map</div>
-              <div className="text-[10px] font-mono text-ink/50">Coming soon — Mapbox integration</div>
-            </div>
-            <div className="map-fallback relative h-[420px] flex items-center justify-center">
-              <div className="text-center max-w-xs px-6">
-                <div className="text-3xl mb-2">🗺️</div>
-                <div className="text-sm font-medium text-ink mb-1">Live map coming soon</div>
-                <p className="text-xs text-ink/60 leading-snug">
-                  Real-time job pins, your service area, and drive-time estimates land once Mapbox is
-                  wired up.
-                </p>
-              </div>
-            </div>
+            )}
           </div>
-          <div className="mt-4 p-4 bg-creamdark/70 border border-ink/10 rounded-2xl text-xs text-ink/70 leading-relaxed">
-            <div className="font-medium text-ink mb-1">💡 Pro tip</div>
-            Set your service area + availability in your profile so we only surface jobs you&rsquo;d
-            actually take.
-          </div>
-        </aside>
-      </main>
-    </>
+        }
+      />
+    </main>
   );
 }

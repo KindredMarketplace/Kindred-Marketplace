@@ -63,7 +63,7 @@ export function LaunchIntro() {
 export function BrandLoader({ variant = 'full' }: { variant?: 'full' | 'inline' }) {
   if (variant === 'inline') {
     return (
-      <div className="kl-inline min-h-[50vh] flex items-center justify-center" role="status" aria-live="polite">
+      <div className="kl-inline min-h-[calc(100dvh-14rem)] lg:min-h-[60vh] flex items-center justify-center" role="status" aria-live="polite">
         <Image src="/brand/kindred-k.png" width={56} height={56} alt="" aria-hidden="true" className="kl-breathe" priority />
         <span className="sr-only">Loading</span>
       </div>

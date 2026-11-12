@@ -17,6 +17,7 @@
  */
 
 import { useMemo, useState } from 'react';
+import { FilterButton, FilterSheet, FilterGroup, ChipToggle } from '@/components/FilterSheet';
 import Link from 'next/link';
 
 export type Caregiver = {
@@ -50,8 +51,6 @@ const GENDERS: [string, string][] = [
   ['nonbinary', 'Non-binary'],
 ];
 const SPECIALTIES = ['Dementia', "Parkinson's", 'Hospice', 'Mobility', 'Med Aide', 'Post-surgical'];
-const AVAILABILITY = ['Days', 'Evenings', 'Overnights', 'Weekends', 'Live-in'];
-const VERIFICATIONS = ['L2 background', 'Insured', 'ID-verified', '1,500+ hours'];
 const AV = ['av-1', 'av-7', 'av-3', 'av-4', 'av-2', 'av-8', 'av-6', 'av-5'];
 
 function initials(c: Caregiver) {
@@ -69,14 +68,11 @@ function hoursLabel(h: number | null) {
 export function BrowseClient({ caregivers, viewer = 'anon' }: { caregivers: Caregiver[]; viewer?: Viewer }) {
   const [search, setSearch] = useState('');
   const [maxRate, setMaxRate] = useState(80);
-  const [distance, setDistance] = useState(25);
   const [gender, setGender] = useState('any');
   const [specialties, setSpecialties] = useState<Set<string>>(new Set());
-  const [availability, setAvailability] = useState<Set<string>>(new Set());
   const [langs, setLangs] = useState<Set<string>>(new Set());
-  const [verifs, setVerifs] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState('best');
-  const [view, setView] = useState<'grid' | 'map'>('grid');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selected, setSelected] = useState<Caregiver | null>(null);
 
   // Language chips come from the real caregivers (honest — only what they speak).
@@ -94,10 +90,12 @@ export function BrowseClient({ caregivers, viewer = 'anon' }: { caregivers: Care
     });
 
   function reset() {
-    setSearch(''); setMaxRate(80); setDistance(25); setGender('any');
-    setSpecialties(new Set()); setAvailability(new Set()); setLangs(new Set()); setVerifs(new Set());
-    setSort('best');
+    setSearch(''); setMaxRate(80); setGender('any');
+    setSpecialties(new Set()); setLangs(new Set());
   }
+
+  const activeCount =
+    (maxRate !== 80 ? 1 : 0) + (gender !== 'any' ? 1 : 0) + (specialties.size > 0 ? 1 : 0) + (langs.size > 0 ? 1 : 0);
 
   const results = useMemo(() => {
     let list = caregivers.filter((c) => {
@@ -126,112 +124,75 @@ export function BrowseClient({ caregivers, viewer = 'anon' }: { caregivers: Care
 
   return (
     <>
-      {/* Top bar: sort + view toggle */}
-      <section className="mb-6 flex items-center justify-between gap-3 flex-wrap fade-up">
-        <div className="flex items-center gap-2 text-sm text-ink/70">
-          <span className="hidden sm:inline">Sort by:</span>
+      {/* Toolbar: Filters · search, then sort. Results come right after. */}
+      <section className="mb-4 fade-up">
+        <div className="flex items-center gap-2">
+          <FilterButton count={activeCount} onClick={() => setFiltersOpen(true)} />
+          <label className="relative flex-1 min-w-0">
+            <span className="sr-only">Search caregivers</span>
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/40" aria-hidden="true">⌕</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search, e.g. dementia, Spanish"
+              className="w-full rounded-full border border-ink/15 bg-white pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-teal"
+            />
+          </label>
+        </div>
+        <div className="mt-3 flex items-center gap-2">
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            className="bg-white border border-ink/15 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal max-w-[220px]"
+            aria-label="Sort"
+            className="rounded-full border border-ink/15 bg-white px-4 py-2 text-sm focus:outline-none focus:border-teal"
           >
-            <option value="best">Best match</option>
-            <option value="rate-low">Rate: low to high</option>
-            <option value="rate-high">Rate: high to low</option>
-            <option value="experience">Most experienced</option>
+            <option value="best">Sort: Best match</option>
+            <option value="rate-low">Sort: Rate, low to high</option>
+            <option value="rate-high">Sort: Rate, high to low</option>
+            <option value="experience">Sort: Most experienced</option>
           </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setView('grid')}
-            className={`rounded-full px-4 py-2.5 text-sm border transition flex items-center gap-2 ${view === 'grid' ? 'bg-deepteal text-cream border-deepteal' : 'bg-white border-ink/15 hover:border-teal'}`}
-          >
-            <span>⊞</span><span>Grid</span>
-          </button>
-          <button
-            onClick={() => setView('map')}
-            className={`rounded-full px-4 py-2.5 text-sm border transition flex items-center gap-2 ${view === 'map' ? 'bg-deepteal text-cream border-deepteal' : 'bg-white border-ink/15 hover:border-teal'}`}
-          >
-            <span>📍</span><span>Map</span>
-          </button>
+          <span className="ml-auto text-xs text-ink/55">
+            {results.length} {results.length === 1 ? 'caregiver' : 'caregivers'}
+          </span>
         </div>
       </section>
 
-      {/* Two-column layout */}
-      <section className="grid lg:grid-cols-[280px_1fr] gap-6 fade-up">
-        {/* Sidebar */}
-        <aside>
-          <div className="bg-white border border-ink/10 rounded-2xl p-5 lg:sticky lg:top-24">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display text-lg font-medium">Filters</h3>
-              <button onClick={reset} className="text-xs text-deepteal hover:text-coral">Reset</button>
-            </div>
-
-            <div className="mb-5">
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name or specialty…"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-ink/15 text-sm bg-white focus:outline-none focus:border-teal"
-              />
-            </div>
-
-            <Slider label="Within" value={`${distance} mi`} min={5} max={100} step={5} v={distance} onChange={setDistance} />
-            <Slider label="Max rate" value={`$${maxRate}/hr`} min={15} max={80} step={1} v={maxRate} onChange={setMaxRate} />
-
-            <FilterBlock label="Caregiver gender">
-              <div className="grid grid-cols-2 gap-1.5">
-                {GENDERS.map(([val, lbl]) => (
-                  <button
-                    key={val}
-                    onClick={() => setGender(val)}
-                    className={`border px-3 py-1.5 rounded-full text-xs transition ${gender === val ? 'bg-deepteal text-cream border-deepteal' : 'bg-white border-ink/15 hover:bg-mist'}`}
-                  >
-                    {lbl}
-                  </button>
-                ))}
-              </div>
-            </FilterBlock>
-
-            <ChipBlock label="Specialties" options={SPECIALTIES} selected={specialties} onToggle={(v) => toggle(setSpecialties, v)} />
-            <ChipBlock label="Availability" options={AVAILABILITY} selected={availability} onToggle={(v) => toggle(setAvailability, v)} />
-            <ChipBlock label="Languages" options={languageOptions} selected={langs} onToggle={(v) => toggle(setLangs, v)} />
-
-            <div className="mb-5 pt-4 border-t border-ink/10">
-              <label className="text-sm font-medium block mb-2.5">Verification</label>
-              <div className="space-y-2 text-sm">
-                {VERIFICATIONS.map((v) => (
-                  <label key={v} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={verifs.has(v)}
-                      onChange={() => toggle(setVerifs, v)}
-                      className="w-4 h-4 rounded accent-deepteal"
-                    />
-                    {v}
-                  </label>
-                ))}
-              </div>
-            </div>
+      <FilterSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        onReset={reset}
+        resultCount={results.length}
+        noun={['caregiver', 'caregivers']}
+      >
+        <Slider label="Max rate" value={maxRate === 80 ? 'Any' : `$${maxRate}/hr`} min={15} max={80} step={1} v={maxRate} onChange={setMaxRate} />
+        <FilterGroup label="Caregiver gender">
+          <div className="flex flex-wrap gap-2">
+            {GENDERS.map(([val, lbl]) => (
+              <ChipToggle key={val} on={gender === val} onClick={() => setGender(val)}>{lbl}</ChipToggle>
+            ))}
           </div>
-        </aside>
+        </FilterGroup>
+        <FilterGroup label="Specialties">
+          <div className="flex flex-wrap gap-2">
+            {SPECIALTIES.map((v) => (
+              <ChipToggle key={v} on={specialties.has(v)} onClick={() => toggle(setSpecialties, v)}>{v}</ChipToggle>
+            ))}
+          </div>
+        </FilterGroup>
+        <FilterGroup label="Languages">
+          <div className="flex flex-wrap gap-2">
+            {languageOptions.map((v) => (
+              <ChipToggle key={v} on={langs.has(v)} onClick={() => toggle(setLangs, v)}>{v}</ChipToggle>
+            ))}
+          </div>
+        </FilterGroup>
+      </FilterSheet>
 
+      <section className="fade-up">
         {/* Results */}
         <div>
-          {view === 'map' ? (
-            <div className="map-placeholder relative rounded-2xl border border-ink/10 h-[480px] flex items-center justify-center text-center overflow-hidden">
-              <div className="relative z-10 max-w-sm px-6">
-                <div className="font-display text-2xl font-medium mb-2">Map view is coming.</div>
-                <p className="text-sm text-ink/60">
-                  We&apos;re wiring up real caregiver service areas so you can search by neighborhood
-                  and draw your own area. For now, use the grid.
-                </p>
-                <button onClick={() => setView('grid')} className="mt-4 bg-deepteal text-cream px-5 py-2.5 rounded-full text-sm font-medium hover:bg-inkdark transition">
-                  Back to grid
-                </button>
-              </div>
-            </div>
-          ) : results.length === 0 ? (
+          {results.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-2xl border border-ink/10">
               {caregivers.length === 0 ? (
                 <>
@@ -448,34 +409,3 @@ function Slider({
   );
 }
 
-function FilterBlock({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="mb-5">
-      <label className="text-sm font-medium block mb-2">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function ChipBlock({
-  label, options, selected, onToggle,
-}: {
-  label: string; options: string[]; selected: Set<string>; onToggle: (v: string) => void;
-}) {
-  return (
-    <div className="mb-5">
-      <label className="text-sm font-medium block mb-2">{label}</label>
-      <div className="flex flex-wrap gap-1.5">
-        {options.map((o) => (
-          <button
-            key={o}
-            onClick={() => onToggle(o)}
-            className={`border px-3 py-1.5 rounded-full text-xs transition ${selected.has(o) ? 'bg-deepteal text-cream border-deepteal' : 'bg-white border-ink/15 hover:bg-mist'}`}
-          >
-            {o}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}

@@ -157,7 +157,9 @@ export default async function ClientLayout({ children }: { children: React.React
       <div className="flex-1">{children}</div>
 
       {/* FOOTER */}
-      <SiteFooter contactHref="/client/help" />
+      <div className="hidden lg:block">
+        <SiteFooter contactHref="/client/help" />
+      </div>
 
       {/* Room for the bottom tab bar on phones/tablets */}
       <div className="lg:hidden h-[calc(4.5rem+env(safe-area-inset-bottom))]" aria-hidden="true" />

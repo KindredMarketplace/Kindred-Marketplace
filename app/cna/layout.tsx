@@ -162,7 +162,9 @@ export default async function CnaLayout({ children }: { children: React.ReactNod
       <div className="flex-1">{children}</div>
 
       {/* FOOTER */}
-      <SiteFooter contactHref="/cna/help" />
+      <div className="hidden lg:block">
+        <SiteFooter contactHref="/cna/help" />
+      </div>
 
       {/* Room for the bottom tab bar on phones/tablets */}
       <div className="lg:hidden h-[calc(4.5rem+env(safe-area-inset-bottom))]" aria-hidden="true" />
