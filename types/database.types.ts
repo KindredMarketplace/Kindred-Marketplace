@@ -2834,6 +2834,35 @@ export type Database = {
           availability: Json
         }[]
       }
+      browse_caregiver: {
+        Args: { target: string }
+        Returns: {
+          availability_status: Database["public"]["Enums"]["cna_availability_status"]
+          bio: string
+          display_name: string
+          experience_hours: number
+          gender: string
+          headline: string
+          hourly_rate_cents: number
+          identity_unlocked: boolean
+          languages: string[]
+          last_name: string
+          photo_url: string
+          rating_avg: number
+          rating_count: number
+          service_radius_miles: number
+          service_zip: string
+          services: string[]
+          user_id: string
+          years_experience: number
+          service_keys: string[]
+          credential: string | null
+          age_bracket: string | null
+          availability: Json
+        }[]
+      }
+      my_saved_caregivers: { Args: never; Returns: string[] }
+      toggle_saved_caregiver: { Args: { shown: string }; Returns: boolean }
       browse_open_jobs: {
         Args: never
         Returns: {

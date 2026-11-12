@@ -22,7 +22,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { FilterButton, FilterSheet, FilterGroup, ChipToggle } from '@/components/FilterSheet';
-import { ResultsMap, type MapPin } from '@/components/ResultsMap';
+import { ResultsMap, type MapPin, type DrawnArea } from '@/components/ResultsMap';
 import { DAYS, SLOTS, type Option } from '@/lib/careOptions';
 
 export type ListItem = {
@@ -52,6 +52,18 @@ export type ListFilter =
     }
   | { kind: 'schedule'; key: string; label: string; hint?: React.ReactNode }
   | { kind: 'recent'; label: string; options: { days: number; label: string }[] };
+
+/** Is a [lat, lng] point inside a drawn area? (ray casting) */
+function inArea(pt: [number, number], area: DrawnArea): boolean {
+  const [y, x] = pt;
+  let inside = false;
+  for (let i = 0, j = area.length - 1; i < area.length; j = i++) {
+    const [yi, xi] = area[i];
+    const [yj, xj] = area[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
 
 export type ListSort = { key: string; label: string; by?: string; dir?: 'asc' | 'desc' };
 
@@ -137,6 +149,7 @@ export function FilterableList({
   const [values, setValues] = useState<Values>(() => initialValues(filters));
   const [showMap, setShowMap] = useState(true);
   const [picked, setPicked] = useState<string | null>(null);
+  const [area, setArea] = useState<DrawnArea | null>(null);
 
   // Remember whether this person likes the map open (this browser only).
   useEffect(() => {
@@ -160,10 +173,11 @@ export function FilterableList({
   const passAllBut = useMemo(() => {
     return (skip: string | null, it: ListItem) => {
       if (needle && !it.text.includes(needle)) return false;
+      if (area && !(it.point && inArea(it.point, area))) return false;
       for (const f of filters) if (keyOf(f) !== skip && !passOne(f, values, it, now)) return false;
       return true;
     };
-  }, [needle, filters, values, now]);
+  }, [needle, filters, values, now, area]);
 
   const results = useMemo(() => {
     const list = items.filter((it) => passAllBut(null, it));
@@ -184,7 +198,7 @@ export function FilterableList({
   const countFor = (f: ListFilter, test: (it: ListItem) => boolean) =>
     items.reduce((n, it) => n + (passAllBut(keyOf(f), it) && test(it) ? 1 : 0), 0);
 
-  const activeCount = filters.reduce((n, f) => n + (isActive(f, values) ? 1 : 0), 0);
+  const activeCount = filters.reduce((n, f) => n + (isActive(f, values) ? 1 : 0), 0) + (area ? 1 : 0);
 
   const set = (key: string, v: Values[string]) => setValues((prev) => ({ ...prev, [key]: v }));
   const toggleTag = (key: string, value: string) => {
@@ -201,6 +215,7 @@ export function FilterableList({
   const reset = () => {
     setValues(initialValues(filters));
     setQ('');
+    setArea(null);
   };
 
   const pins: MapPin[] = useMemo(
@@ -276,8 +291,19 @@ export function FilterableList({
 
       {map && showMap && items.length > 0 && (
         <div className="mt-4">
-          <ResultsMap pins={pins} home={map.home ?? null} selectedId={picked} onSelect={pick} className="h-60 sm:h-72 lg:h-96" />
+          <ResultsMap
+            pins={pins}
+            home={map.home ?? null}
+            selectedId={picked}
+            onSelect={pick}
+            area={area}
+            onArea={setArea}
+            className="h-64 sm:h-72 lg:h-96"
+          />
           <p className="mt-1.5 text-[11px] text-ink/50">
+            {area
+              ? 'Showing only what’s inside the area you drew. '
+              : 'Tap ✏️ Draw to trace an area. '}
             {map.note ?? 'Pins show the general area (ZIP code), never an address.'}
             {unmapped > 0 && ` ${unmapped} ${unmapped === 1 ? noun[0] : noun[1]} without a ZIP aren’t on the map.`}
           </p>

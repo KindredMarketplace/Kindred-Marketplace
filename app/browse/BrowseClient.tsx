@@ -51,12 +51,17 @@ export function BrowseClient({
   home = null,
   distanceHint,
   showMap = true,
+  profileBase,
+  profileSuffix = '',
 }: {
   caregivers: Caregiver[];
   viewer?: Viewer;
   home?: [number, number] | null;
   distanceHint?: React.ReactNode;
   showMap?: boolean;
+  /** When set, cards open the full profile page (profileBase + id + profileSuffix) instead of the pop-up. */
+  profileBase?: string;
+  profileSuffix?: string;
 }) {
   const [selected, setSelected] = useState<Caregiver | null>(null);
 
@@ -65,9 +70,9 @@ export function BrowseClient({
   const cards = useMemo(() => {
     const out: Record<string, React.ReactNode> = {};
     caregivers.forEach((c, i) => {
-      out[c.user_id] = (
+      const body = (
       <article
-        onClick={() => setSelected(c)}
+        onClick={profileBase ? undefined : () => setSelected(c)}
         className="card-hover bg-white border border-ink/10 rounded-2xl p-5 h-full cursor-pointer"
       >
         <div className="flex items-start gap-3 mb-3">
@@ -114,9 +119,16 @@ export function BrowseClient({
         </div>
       </article>
       );
+      out[c.user_id] = profileBase ? (
+        <Link href={`${profileBase}${c.user_id}${profileSuffix}`} className="block h-full">
+          {body}
+        </Link>
+      ) : (
+        body
+      );
     });
     return out;
-  }, [caregivers]);
+  }, [caregivers, profileBase, profileSuffix]);
 
   return (
     <>

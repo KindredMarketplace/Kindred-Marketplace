@@ -17,6 +17,7 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
       { label: 'How it works', href: '/how-it-works' },
       { label: 'The Kindred Standard', href: '/kindred-standard' },
       { label: 'Pricing', href: '/pricing' },
+      { label: 'Questions families ask', href: '/faq' },
     ],
   },
   {

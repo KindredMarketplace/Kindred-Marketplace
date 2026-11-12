@@ -2,9 +2,25 @@
 
 import { useActionState } from 'react';
 import { saveAccountAction, type AccountSaveState } from '@/app/cna/settings/actions';
+import { saveFamilyAccountAction } from '@/app/client/account/actions';
 
-export function AccountForm({ first, last, email, phone }: { first: string; last: string; email: string; phone: string }) {
-  const [state, action, pending] = useActionState<AccountSaveState, FormData>(saveAccountAction, null);
+export function AccountForm({
+  first,
+  last,
+  email,
+  phone,
+  who = 'cna',
+}: {
+  first: string;
+  last: string;
+  email: string;
+  phone: string;
+  who?: 'cna' | 'family';
+}) {
+  const [state, action, pending] = useActionState<AccountSaveState, FormData>(
+    who === 'family' ? saveFamilyAccountAction : saveAccountAction,
+    null
+  );
   const label = 'text-xs text-ink/60 font-mono uppercase tracking-widest mb-1.5 block';
   return (
     <form action={action}>
@@ -16,7 +32,9 @@ export function AccountForm({ first, last, email, phone }: { first: string; last
         <div>
           <label className={label} htmlFor="last_name">Last name</label>
           <input id="last_name" name="last_name" className="kfield" defaultValue={last} maxLength={60} />
-          <div className="text-[10px] text-ink/50 mt-1">Families see your first name and last initial.</div>
+          <div className="text-[10px] text-ink/50 mt-1">
+            {who === 'family' ? 'Caregivers you message see your first name and last initial.' : 'Families see your first name and last initial.'}
+          </div>
         </div>
         <div>
           <label className={label} htmlFor="email">Email (sign-in)</label>

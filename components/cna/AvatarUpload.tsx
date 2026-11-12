@@ -12,6 +12,7 @@
 import { useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { setProfilePhotoAction } from '@/app/cna/profile/actions';
+import { setFamilyPhotoAction } from '@/app/client/account/actions';
 
 const MAX_SIDE = 640;
 
@@ -39,11 +40,14 @@ export function AvatarUpload({
   photoUrl,
   initials,
   avatarClass,
+  who = 'cna',
 }: {
   userId: string;
   photoUrl: string | null;
   initials: string;
   avatarClass: string;
+  /** Caregivers save it as their public profile photo; families as their account photo. */
+  who?: 'cna' | 'family';
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState(photoUrl);
@@ -68,7 +72,7 @@ export function AvatarUpload({
         .storage.from('kindred-avatars')
         .upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: false });
       if (error) throw error;
-      const res = await setProfilePhotoAction(path);
+      const res = who === 'family' ? await setFamilyPhotoAction(path) : await setProfilePhotoAction(path);
       if (!res.ok || !res.url) throw new Error(res.message);
       setUrl(res.url);
       setMsg('Photo updated.');

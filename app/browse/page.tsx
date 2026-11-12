@@ -88,7 +88,14 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
           </p>
         </section>
 
-        <BrowseClient caregivers={caregivers} viewer={viewer} home={home} distanceHint={distanceHint} />
+        <BrowseClient
+          caregivers={caregivers}
+          viewer={viewer}
+          home={home}
+          distanceHint={distanceHint}
+          profileBase="/browse/"
+          profileSuffix={nearZip && nearParam ? `?near=${nearZip}` : ''}
+        />
       </main>
       <SiteFooter />
     </div>

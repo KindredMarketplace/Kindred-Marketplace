@@ -54,6 +54,7 @@ function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.includes(pathname)) return true;
   // Sub-paths of public marketing routes
   if (pathname.startsWith('/caregiver/')) return true; // public caregiver profiles
+  if (pathname.startsWith('/browse/')) return true; // a caregiver's profile from Browse
   if (pathname.startsWith('/api/health')) return true;
   if (pathname.startsWith('/api/stripe/webhook')) return true;
   return false;

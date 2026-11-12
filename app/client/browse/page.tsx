@@ -22,6 +22,7 @@ import { caregiverItem, caregiverFilters, caregiverSorts, type CaregiverRow } fr
 import { CREDENTIALS } from '@/lib/careOptions';
 import { zipPoint, milesBetween, pinPoint } from '@/lib/geo';
 import { StartMessageModal } from '@/components/client/StartMessageModal';
+import { SaveCaregiverButton } from '@/components/client/SaveCaregiverButton';
 import { getMyAccess, getAccessFor } from '@/lib/membership';
 import { getViewer } from '@/lib/viewer';
 
@@ -30,7 +31,8 @@ export const dynamic = 'force-dynamic';
 const CRED_LABEL: Record<string, string> = Object.fromEntries(CREDENTIALS.map((o) => [o.value, o.label]));
 
 
-export default async function ClientBrowsePage() {
+export default async function ClientBrowsePage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+  const showSaved = (await searchParams).saved === '1';
   const { supabase, user, viewingAs } = await getViewer();
   if (!user) redirect('/login');
 
@@ -40,12 +42,16 @@ export default async function ClientBrowsePage() {
   // Locked preview (Nov 2026): rows come from browse_caregivers(), which only
   // returns LISTED caregivers (Kindred Standard + membership) and withholds
   // names/photos unless this family is a member or already connected.
-  const [{ data: rows }, access] = await Promise.all([
+  const [{ data: rows }, access, { data: savedIds }] = await Promise.all([
     supabase.rpc('browse_caregivers'),
     viewingAs && user ? getAccessFor(supabase, user.id) : getMyAccess(supabase),
+    supabase.rpc('my_saved_caregivers'),
   ]);
+  const savedSet = new Set((savedIds ?? []) as string[]);
   const home = zipPoint(clientZip);
-  const caregivers: CaregiverRow[] = ((rows ?? []) as CaregiverRow[]).map((c) => ({
+  const allRows = (rows ?? []) as CaregiverRow[];
+  const savedCount = allRows.filter((c) => savedSet.has(c.user_id)).length;
+  const caregivers: CaregiverRow[] = (showSaved ? allRows.filter((c) => savedSet.has(c.user_id)) : allRows).map((c) => ({
     ...c,
     distance_mi: milesBetween(home, zipPoint(c.service_zip)),
     pin_point: pinPoint(c.service_zip, c.user_id),
@@ -97,7 +103,9 @@ export default async function ClientBrowsePage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-display text-xl font-medium">{fullName}</div>
+                <Link href={`/client/caregivers/${c.user_id}`} className="font-display text-xl font-medium hover:text-deepteal">
+                  {fullName}
+                </Link>
                 <div className="text-xs text-ink/60 mt-1 font-mono">
                   {c.rating_avg != null && (c.rating_count ?? 0) > 0
                     ? `★ ${Number(c.rating_avg).toFixed(1)} · ${c.rating_count} reviews · `
@@ -128,7 +136,13 @@ export default async function ClientBrowsePage() {
                 )}
               </div>
             )}
-            <div className="flex gap-2 mt-4">
+            <div className="flex gap-2 mt-4 items-center">
+              <Link
+                href={`/client/caregivers/${c.user_id}`}
+                className="flex-1 text-xs py-2 border border-ink/15 rounded-full text-center hover:bg-mist transition"
+              >
+                View profile
+              </Link>
               {isMember || c.identity_unlocked ? (
                 <StartMessageModal
                   cnaId={c.user_id}
@@ -143,6 +157,7 @@ export default async function ClientBrowsePage() {
                   🔒 Unlock to message
                 </Link>
               )}
+              <SaveCaregiverButton shownId={c.user_id} initiallySaved={savedSet.has(c.user_id)} />
             </div>
           </div>
         </div>
@@ -150,11 +165,18 @@ export default async function ClientBrowsePage() {
     );
   }
 
+  const tab = (on: boolean, coral?: boolean) =>
+    `rounded-full px-4 py-2 text-sm border transition ${on ? (coral ? 'bg-coral text-cream border-coral' : 'bg-ink text-cream border-ink') : 'bg-white border-ink/15 hover:bg-mist'}`;
+
   return (
     <main className="max-w-kindred mx-auto px-4 sm:px-6 pt-5 lg:pt-10 pb-16">
       <h1 className="font-display text-3xl md:text-4xl font-light leading-tight mb-4 fade-up">
-        Find <span className="italic font-medium text-gradient">care</span>
-        {clientZip && <span className="text-base text-ink/50 font-sans ml-2">near {clientZip}</span>}
+        {showSaved ? (
+          <>Your <span className="italic font-medium text-gradient">saved caregivers</span></>
+        ) : (
+          <>Find <span className="italic font-medium text-gradient">care</span></>
+        )}
+        {clientZip && !showSaved && <span className="text-base text-ink/50 font-sans ml-2">near {clientZip}</span>}
       </h1>
 
       <FilterableList
@@ -166,6 +188,14 @@ export default async function ClientBrowsePage() {
         searchPlaceholder="Search, e.g. dementia, Spanish"
         noun={['caregiver', 'caregivers']}
         listClassName="grid gap-4 lg:grid-cols-2"
+        toolbarExtra={
+          <>
+            <Link href="/client/browse" className={tab(!showSaved)}>All</Link>
+            <Link href="/client/browse?saved=1" className={tab(showSaved, true)}>
+              ♥ Saved{savedCount ? ` (${savedCount})` : ''}
+            </Link>
+          </>
+        }
         banner={
           !isMember ? (
             <div className="bg-gradient-to-br from-mist/70 to-creamdark/70 border border-ink/10 rounded-2xl px-4 py-3 flex items-center gap-3 justify-between">
@@ -179,6 +209,13 @@ export default async function ClientBrowsePage() {
           ) : null
         }
         empty={
+          showSaved ? (
+            <div className="bg-white border border-dashed border-ink/20 rounded-2xl p-10 text-center">
+              <div className="text-3xl mb-3">♡</div>
+              <h3 className="font-display text-xl font-medium mb-1">Nothing saved yet</h3>
+              <p className="text-sm text-ink/60 max-w-sm mx-auto">Tap the ♡ on any caregiver to keep them here.</p>
+            </div>
+          ) : (
           <div className="bg-white border border-dashed border-ink/20 rounded-2xl p-10 text-center">
             <div className="text-3xl mb-3">🔍</div>
             <h3 className="font-display text-xl font-medium mb-1">No caregivers to show yet</h3>
@@ -190,6 +227,7 @@ export default async function ClientBrowsePage() {
               Post a job →
             </Link>
           </div>
+          )
         }
       />
     </main>

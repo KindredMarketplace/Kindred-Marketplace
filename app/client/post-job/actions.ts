@@ -142,7 +142,10 @@ export async function postJobAction(formData: FormData): Promise<PostJobResult> 
   });
 
   if (error) {
-    return { ok: false, error: error.message };
+    if (/row-level security/i.test(error.message)) {
+      return { ok: false, error: 'Posting a job is part of membership. Join from the Membership page, then post.' };
+    }
+    return { ok: false, error: 'That didn’t post. Please try again.' };
   }
 
   revalidatePath('/client/dashboard');

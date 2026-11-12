@@ -7,15 +7,43 @@
  * postJobAction server action. The interactive form is <PostJobForm/>.
  */
 
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { PostJobForm } from '@/components/client/PostJobForm';
 import { getViewer } from '@/lib/viewer';
+import { getMyAccess, getAccessFor } from '@/lib/membership';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ClientPostJobPage() {
-  const { supabase, user } = await getViewer();
+  const { supabase, user, viewingAs } = await getViewer();
   if (!user) redirect('/login');
+
+  // Posting is a member feature (a job lets caregivers apply and start a
+  // conversation). The database enforces it too (00035).
+  const access = viewingAs ? await getAccessFor(supabase, user.id) : await getMyAccess(supabase);
+  if (!access?.is_member) {
+    return (
+      <main className="max-w-xl mx-auto px-4 sm:px-6 py-12 lg:py-16 text-center">
+        <div className="text-4xl mb-4">📝</div>
+        <h1 className="font-display text-3xl md:text-4xl font-light leading-tight">
+          Posting a job is part of <span className="italic font-medium text-gradient">membership.</span>
+        </h1>
+        <p className="text-ink/70 mt-3">
+          When you post, caregivers who meet the Kindred Standard can apply and message you, so posting opens with a
+          family membership. Browsing caregivers stays free.
+        </p>
+        <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+          <Link href="/client/membership" className="bg-deepteal text-cream px-6 py-3 rounded-full text-sm font-medium hover:bg-inkdark transition">
+            See membership
+          </Link>
+          <Link href="/client/browse" className="border border-ink/15 px-6 py-3 rounded-full text-sm hover:bg-mist transition">
+            Keep browsing
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   const [taxRes, profileRes, recipientsRes] = await Promise.all([
     supabase.from('service_taxonomy').select('key, label, category').order('display_order', { ascending: true }),
