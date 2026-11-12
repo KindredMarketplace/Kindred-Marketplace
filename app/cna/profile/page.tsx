@@ -12,6 +12,7 @@ import { initials, avatarClass } from '@/lib/utils/avatar';
 import { getViewer } from '@/lib/viewer';
 import { getStandardStatus, formatExpiry, type DocState } from '@/lib/standard';
 import { ProfileEditor } from '@/components/cna/ProfileEditor';
+import { normalizeLanguage } from '@/lib/careOptions';
 import { AvatarUpload } from '@/components/cna/AvatarUpload';
 
 export const dynamic = 'force-dynamic';
@@ -20,9 +21,10 @@ export default async function CnaProfilePage() {
   const { supabase, user } = await getViewer();
   if (!user) redirect('/login');
 
-  const [userRes, profileRes] = await Promise.all([
+  const [userRes, profileRes, servicesRes] = await Promise.all([
     supabase.from('users').select('full_name').eq('id', user.id).single(),
     supabase.from('cna_profiles').select('*').eq('user_id', user.id).maybeSingle(),
+    supabase.from('cna_services').select('service_key').eq('cna_id', user.id),
   ]);
 
   const me = userRes.data;
@@ -123,7 +125,10 @@ export default async function CnaProfilePage() {
               headline: profile?.headline ?? '',
               bio: profile?.bio ?? '',
               rate: profile?.hourly_rate_cents ? String(Math.round(profile.hourly_rate_cents / 100)) : '',
-              languages: languages.join(', '),
+              languages: languages.map(normalizeLanguage),
+              services: (servicesRes.data ?? []).map((r) => r.service_key),
+              gender: profile?.gender ?? '',
+              age_bracket: profile?.age_bracket ?? '',
               service_zip: profile?.service_zip ?? '',
               service_radius_miles: profile?.service_radius_miles != null ? String(profile.service_radius_miles) : '',
             }}
@@ -191,7 +196,7 @@ export default async function CnaProfilePage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-ink/55">Add the languages you speak in &ldquo;Area and languages&rdquo;.</p>
+              <p className="text-sm text-ink/55">Add the languages you speak in &ldquo;About you&rdquo;.</p>
             )}
           </div>
 

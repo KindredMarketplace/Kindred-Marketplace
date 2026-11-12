@@ -23,6 +23,9 @@ const PostJobSchema = z.object({
   services_needed: z.array(z.string()).default([]),
   zip: z.string().min(3, 'A ZIP is required so caregivers nearby can see this.').max(10),
   care_recipient_id: z.string().uuid().optional().or(z.literal('')),
+  days: z.array(z.enum(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])).default([]),
+  start_time: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal('')),
+  end_time: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal('')),
 });
 
 export type PostJobResult =
@@ -57,6 +60,9 @@ export async function postJobAction(formData: FormData): Promise<PostJobResult> 
     services_needed: formData.getAll('services_needed').map((s) => s.toString()),
     zip: formData.get('zip')?.toString() ?? '',
     care_recipient_id: formData.get('care_recipient_id')?.toString() ?? '',
+    days: [...new Set(formData.getAll('days').map((s) => s.toString()))] as ('sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat')[],
+    start_time: formData.get('start_time')?.toString() ?? '',
+    end_time: formData.get('end_time')?.toString() ?? '',
   };
 
   const parsed = PostJobSchema.safeParse(raw);
@@ -76,6 +82,9 @@ export async function postJobAction(formData: FormData): Promise<PostJobResult> 
     d.budget_max_cents < d.budget_min_cents
   ) {
     return { ok: false, error: 'Maximum budget must be at least the minimum.' };
+  }
+  if (!!d.start_time !== !!d.end_time) {
+    return { ok: false, error: 'Add both a start and an end time, or leave both empty.', fieldErrors: { start_time: 'Add both times.' } };
   }
 
   // Ensure this user has a client_profiles row. `jobs.client_id` FKs to
@@ -124,6 +133,9 @@ export async function postJobAction(formData: FormData): Promise<PostJobResult> 
     budget_min_cents: d.budget_min_cents ?? null,
     budget_max_cents: d.budget_max_cents ?? null,
     services_needed: d.services_needed,
+    days: d.days,
+    start_time: d.start_time || null,
+    end_time: d.end_time || null,
     zip: d.zip,
     status: 'open',
     posted_at: new Date().toISOString(),

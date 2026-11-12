@@ -5,8 +5,8 @@
  * timesheets, clock-in, or pay for shifts: caregivers and families agree on
  * schedules and pay directly. So the mock's filler calendar, upcoming shifts
  * with pay amounts, and stats are gone, replaced by an honest empty state.
- * The recurring availability editor is a real interactive component
- * (AvailabilityEditor), though its state isn't persisted to cna_availability yet.
+ * The recurring availability editor saves to cna_availability, and families
+ * filter Browse by it ("When they're free").
  *
  * Shell (nav/footer) comes from app/cna/layout.tsx.
  */
@@ -15,12 +15,20 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { AvailabilityEditor } from '@/components/cna/AvailabilityEditor';
 import { getViewer } from '@/lib/viewer';
+import { availabilityTags } from '@/lib/careOptions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CnaSchedulePage() {
   const { supabase, user } = await getViewer();
   if (!user) redirect('/login');
+
+  const { data: avail } = await supabase
+    .from('cna_availability')
+    .select('day_of_week, start_time, end_time')
+    .eq('cna_id', user.id)
+    .eq('is_active', true);
+  const initialSlots = availabilityTags((avail ?? []).map((a) => ({ d: a.day_of_week, s: a.start_time, e: a.end_time })));
 
   return (
     <main className="max-w-kindred mx-auto px-6 py-10 lg:py-14">
@@ -64,7 +72,7 @@ export default async function CnaSchedulePage() {
           <div>
             <div className="text-xs font-mono uppercase tracking-widest text-ink/50 mb-1">Recurring availability</div>
             <h2 className="font-display text-xl font-medium mb-4">When you&rsquo;re free</h2>
-            <AvailabilityEditor />
+            <AvailabilityEditor initial={initialSlots} />
           </div>
 
           {/* Time off — not built yet */}

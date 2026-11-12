@@ -63,3 +63,4 @@ scripts/db-tests/migration25.sql
 .vercel
 .env*
 !.env.example
+/public/vendor/

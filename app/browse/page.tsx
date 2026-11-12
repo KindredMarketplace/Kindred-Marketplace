@@ -14,16 +14,16 @@ import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
 import { BrowseClient, type Caregiver, type Viewer } from './BrowseClient';
 import { getMyAccess } from '@/lib/membership';
+import { zipPoint, milesBetween, pinPoint } from '@/lib/geo';
 
 export const dynamic = 'force-dynamic';
 
-export default async function BrowsePage() {
+export default async function BrowsePage({ searchParams }: { searchParams: Promise<{ near?: string }> }) {
+  const nearParam = ((await searchParams).near ?? '').trim();
   const supabase = await createClient();
   const [{ data }, {
     data: { user },
   }] = await Promise.all([supabase.rpc('browse_caregivers'), supabase.auth.getUser()]);
-
-  const caregivers = (data ?? []) as Caregiver[];
 
   let viewer: Viewer = 'anon';
   if (user) {
@@ -32,6 +32,38 @@ export default async function BrowsePage() {
     else if (access?.role === 'cna') viewer = 'caregiver';
     else viewer = access?.is_member ? 'family_member' : 'family';
   }
+
+  // Distance and the map are measured from a ZIP: the one typed here, or a
+  // signed-in family's own. ZIP areas only, never an address.
+  let nearZip = /^\d{5}$/.test(nearParam) ? nearParam : null;
+  if (!nearZip && (viewer === 'family' || viewer === 'family_member') && user) {
+    const { data: cp } = await supabase.from('client_profiles').select('zip').eq('user_id', user.id).maybeSingle();
+    nearZip = cp?.zip && zipPoint(cp.zip) ? cp.zip : null;
+  }
+  const home = zipPoint(nearZip);
+  const caregivers: Caregiver[] = ((data ?? []) as Caregiver[]).map((c) => ({
+    ...c,
+    distance_mi: milesBetween(home, zipPoint(c.service_zip)),
+    pin_point: pinPoint(c.service_zip, c.user_id),
+  }));
+
+  const distanceHint = (
+    <form action="/browse" method="get" className="flex items-center gap-2 mt-1">
+      <label htmlFor="near" className="shrink-0">From ZIP</label>
+      <input
+        id="near"
+        name="near"
+        inputMode="numeric"
+        maxLength={5}
+        pattern="\d{5}"
+        defaultValue={nearZip ?? ''}
+        placeholder="32601"
+        className="w-24 rounded-full border border-ink/15 bg-white px-3 py-1.5 font-mono text-sm text-ink focus:outline-none focus:border-teal"
+      />
+      <button type="submit" className="rounded-full bg-deepteal px-3 py-1.5 text-cream">Set</button>
+      {nearParam && !home && <span className="text-coral">We don&apos;t know that ZIP.</span>}
+    </form>
+  );
 
   return (
     <div className="min-h-screen bg-cream">
@@ -45,7 +77,7 @@ export default async function BrowsePage() {
             <span className="italic font-medium text-gradient">
               {caregivers.length} {caregivers.length === 1 ? 'caregiver' : 'caregivers'}
             </span>{' '}
-            near Gainesville, FL
+            {nearZip ? `near ${nearZip}` : 'near Gainesville, FL'}
           </h1>
           <p className="hidden md:block text-ink/70 mt-2 max-w-2xl">
             Every caregiver here meets the{' '}
@@ -56,7 +88,7 @@ export default async function BrowsePage() {
           </p>
         </section>
 
-        <BrowseClient caregivers={caregivers} viewer={viewer} />
+        <BrowseClient caregivers={caregivers} viewer={viewer} home={home} distanceHint={distanceHint} />
       </main>
       <SiteFooter />
     </div>

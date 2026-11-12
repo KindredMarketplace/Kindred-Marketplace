@@ -11,6 +11,7 @@
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { pinPoint } from '@/lib/geo';
 import { getViewer } from '@/lib/viewer';
 import { BrowseClient, type Caregiver } from '@/app/browse/BrowseClient';
 import { getStandardStatus } from '@/lib/standard';
@@ -38,13 +39,14 @@ export default async function ProfilePreviewPage({ searchParams }: { searchParam
   const { supabase, user } = await getViewer();
   if (!user) redirect('/login');
 
-  const [{ data: p }, { data: services }, standard] = await Promise.all([
+  const [{ data: p }, { data: services }, { data: avail }, standard] = await Promise.all([
     supabase
       .from('cna_profiles')
-      .select('user_id, display_name, last_name, photo_url, headline, bio, hourly_rate_cents, years_experience, experience_hours, service_zip, languages, gender, availability_status')
+      .select('user_id, display_name, last_name, photo_url, headline, bio, hourly_rate_cents, years_experience, experience_hours, service_zip, service_radius_miles, languages, gender, availability_status, credential, age_bracket, rating_avg, rating_count')
       .eq('user_id', user.id)
       .maybeSingle(),
     supabase.from('cna_services').select('service_key').eq('cna_id', user.id),
+    supabase.from('cna_availability').select('day_of_week, start_time, end_time').eq('cna_id', user.id).eq('is_active', true),
     getStandardStatus(supabase, user.id),
   ]);
   if (!p) redirect('/cna/profile');
@@ -71,6 +73,14 @@ export default async function ProfilePreviewPage({ searchParams }: { searchParam
     availability_status: p.availability_status,
     services: keys.map((k) => labelBy.get(k) ?? k.replace(/_/g, ' ')),
     identity_unlocked: asMember,
+    service_keys: keys,
+    credential: p.credential,
+    age_bracket: p.age_bracket,
+    rating_avg: p.rating_avg,
+    rating_count: p.rating_count,
+    service_radius_miles: p.service_radius_miles,
+    availability: (avail ?? []).map((a) => ({ d: a.day_of_week, s: a.start_time, e: a.end_time })),
+    pin_point: pinPoint(p.service_zip, p.user_id),
   };
 
   const tab = (on: boolean) =>

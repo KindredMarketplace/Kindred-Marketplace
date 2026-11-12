@@ -3,7 +3,8 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 // Content Security Policy. Next.js needs 'unsafe-inline' for its own bootstrap
 // scripts (no nonce middleware yet); everything else is locked to this site,
-// Supabase, Google Fonts and Stripe's hosted checkout / billing pages.
+// Supabase, Google Fonts, Stripe's hosted checkout / billing pages, and the
+// OpenFreeMap map tiles (the map draws in a blob: web worker).
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
@@ -11,8 +12,8 @@ const csp = [
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https://fibrhkrdyadnuebwovac.supabase.co https://images.unsplash.com",
   "media-src 'self' blob: https://fibrhkrdyadnuebwovac.supabase.co",
-  `connect-src 'self' https://fibrhkrdyadnuebwovac.supabase.co wss://fibrhkrdyadnuebwovac.supabase.co${isDev ? ' ws:' : ''}`,
-  "worker-src 'self'",
+  `connect-src 'self' https://fibrhkrdyadnuebwovac.supabase.co wss://fibrhkrdyadnuebwovac.supabase.co https://tiles.openfreemap.org${isDev ? ' ws:' : ''}`,
+  "worker-src 'self' blob:",
   "manifest-src 'self'",
   "frame-src 'none'",
   "frame-ancestors 'none'",

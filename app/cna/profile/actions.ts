@@ -1,14 +1,15 @@
 'use server';
 
 /**
- * Save the caregiver's public profile: headline, story, rate, languages,
- * service area. Everything Kindred verifies (hours, documents, stage) is
+ * Save the caregiver's public profile: headline, story, rate, service area,
+ * care offered (cna_services), languages, and optional gender / age range. Everything Kindred verifies (hours, documents, stage) is
  * pinned by the database guard trigger, so it can't be changed from here.
  */
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { SERVICE_LABEL, GENDERS, CAREGIVER_AGES, normalizeLanguage } from '@/lib/careOptions';
 
 export type ProfileSaveState = { ok: boolean; message: string; errors?: Record<string, string> } | null;
 
@@ -19,7 +20,11 @@ const Schema = z.object({
     .string()
     .trim()
     .refine((v) => v === '' || (/^\d{1,3}(\.\d{1,2})?$/.test(v) && Number(v) >= 15 && Number(v) <= 150), 'Enter a rate between $15 and $150 an hour.'),
-  languages: z.string().trim().max(200),
+  languages: z.array(z.string().max(40)).max(30),
+  languages_other: z.string().trim().max(200),
+  services: z.array(z.string()).max(60),
+  gender: z.string().refine((v) => v === '' || GENDERS.some((g) => g.value === v)),
+  age_bracket: z.string().refine((v) => v === '' || CAREGIVER_AGES.some((a) => a.value === v)),
   service_zip: z.string().trim().refine((v) => v === '' || /^\d{5}$/.test(v), 'Use a 5-digit ZIP code.'),
   service_radius_miles: z
     .string()
@@ -38,7 +43,11 @@ export async function saveProfileAction(_prev: ProfileSaveState, formData: FormD
     headline: formData.get('headline')?.toString() ?? '',
     bio: formData.get('bio')?.toString() ?? '',
     rate: formData.get('rate')?.toString() ?? '',
-    languages: formData.get('languages')?.toString() ?? '',
+    languages: formData.getAll('languages').map(String),
+    languages_other: formData.get('languages_other')?.toString() ?? '',
+    services: formData.getAll('services').map(String),
+    gender: formData.get('gender')?.toString() ?? '',
+    age_bracket: formData.get('age_bracket')?.toString() ?? '',
     service_zip: formData.get('service_zip')?.toString() ?? '',
     service_radius_miles: formData.get('service_radius_miles')?.toString() ?? '',
   });
@@ -51,13 +60,13 @@ export async function saveProfileAction(_prev: ProfileSaveState, formData: FormD
 
   const languages = [
     ...new Set(
-      d.languages
-        .split(',')
+      [...d.languages, ...d.languages_other.split(',')]
         .map((l) => l.trim())
         .filter(Boolean)
-        .map((l) => l.slice(0, 30))
+        .map((l) => normalizeLanguage(l).slice(0, 30))
     ),
-  ].slice(0, 8);
+  ].slice(0, 12);
+  const services = [...new Set(d.services.filter((k) => k in SERVICE_LABEL))];
 
   const { error } = await supabase
     .from('cna_profiles')
@@ -66,11 +75,27 @@ export async function saveProfileAction(_prev: ProfileSaveState, formData: FormD
       bio: d.bio || null,
       hourly_rate_cents: d.rate === '' ? null : Math.round(Number(d.rate) * 100),
       languages,
+      gender: d.gender || null,
+      age_bracket: d.age_bracket || null,
       service_zip: d.service_zip || null,
       service_radius_miles: d.service_radius_miles === '' ? null : Number(d.service_radius_miles),
     })
     .eq('user_id', user.id);
   if (error) return { ok: false, message: 'That didn’t save. Please try again.' };
+
+  // Care offered: replace the list with exactly what's ticked.
+  const { data: had } = await supabase.from('cna_services').select('service_key').eq('cna_id', user.id);
+  const before = new Set((had ?? []).map((r) => r.service_key));
+  const remove = [...before].filter((k) => !services.includes(k));
+  const add = services.filter((k) => !before.has(k));
+  if (remove.length) {
+    const { error: delErr } = await supabase.from('cna_services').delete().eq('cna_id', user.id).in('service_key', remove);
+    if (delErr) return { ok: false, message: 'Your details saved, but the care list didn’t. Please try again.' };
+  }
+  if (add.length) {
+    const { error: insErr } = await supabase.from('cna_services').insert(add.map((service_key) => ({ cna_id: user.id, service_key })));
+    if (insErr) return { ok: false, message: 'Your details saved, but the care list didn’t. Please try again.' };
+  }
 
   revalidatePath('/cna/profile');
   revalidatePath('/cna/dashboard');

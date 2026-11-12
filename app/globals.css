@@ -595,3 +595,36 @@
     border: 2px solid #2e6e73; cursor: pointer;
   }
 }
+
+/* ---------- Results map pins (components/ResultsMap.tsx) ---------- */
+.kmap-pin {
+  background: #fff;
+  color: #1F3A3D;
+  font: 600 12px/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 58, 61, 0.18);
+  box-shadow: 0 2px 8px rgba(20, 38, 41, 0.18);
+  white-space: nowrap;
+  cursor: pointer;
+  z-index: 1;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.kmap-pin:hover { transform: translateY(-1px); }
+.kmap-pin-on {
+  background: #2E6E73;
+  color: #FBFAF6;
+  border-color: #2E6E73;
+  z-index: 3;
+  transform: scale(1.08);
+}
+.kmap-home {
+  z-index: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #E89B85;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 6px rgba(232, 155, 133, 0.25);
+}
+.maplibregl-ctrl-attrib { font-size: 10px; }

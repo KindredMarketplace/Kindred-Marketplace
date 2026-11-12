@@ -3,9 +3,10 @@
  * Shell lives in app/client/layout.tsx.
  *
  * Real-data-only: caregiver cards are real cna_profiles (with their service
- * tags from cna_services → service_taxonomy). Results come first; filters
- * (rate, care offered, languages) live behind one Filters button and all
- * actually filter (components/FilterableList).
+ * tags from cna_services → service_taxonomy). Results come first, with a
+ * map; the full filter set (lib/listConfigs.ts) lives behind one Filters
+ * button, every option listed with how many caregivers it would show.
+ * Distance is ZIP to ZIP (lib/geo.ts), never an address.
  *
  * Note on routing: the Page Map reserves a PUBLIC /browse for logged-out
  * visitors. This page is the LOGGED-IN client experience that inherits the
@@ -16,12 +17,17 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { formatCents } from '@/lib/utils/money';
 import { initials, avatarClass } from '@/lib/utils/avatar';
-import { FilterableList, type ListItem, type ListFilter } from '@/components/FilterableList';
+import { FilterableList } from '@/components/FilterableList';
+import { caregiverItem, caregiverFilters, caregiverSorts, type CaregiverRow } from '@/lib/listConfigs';
+import { CREDENTIALS } from '@/lib/careOptions';
+import { zipPoint, milesBetween, pinPoint } from '@/lib/geo';
 import { StartMessageModal } from '@/components/client/StartMessageModal';
 import { getMyAccess, getAccessFor } from '@/lib/membership';
 import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
+
+const CRED_LABEL: Record<string, string> = Object.fromEntries(CREDENTIALS.map((o) => [o.value, o.label]));
 
 
 export default async function ClientBrowsePage() {
@@ -38,7 +44,12 @@ export default async function ClientBrowsePage() {
     supabase.rpc('browse_caregivers'),
     viewingAs && user ? getAccessFor(supabase, user.id) : getMyAccess(supabase),
   ]);
-  const caregivers = rows ?? [];
+  const home = zipPoint(clientZip);
+  const caregivers: CaregiverRow[] = ((rows ?? []) as CaregiverRow[]).map((c) => ({
+    ...c,
+    distance_mi: milesBetween(home, zipPoint(c.service_zip)),
+    pin_point: pinPoint(c.service_zip, c.user_id),
+  }));
   const isMember = access?.is_member ?? false;
   const servicesByCna = new Map<string, string[]>(caregivers.map((c) => [c.user_id, c.services ?? []]));
 
@@ -50,21 +61,14 @@ export default async function ClientBrowsePage() {
     .in('status', ['active', 'scheduled']);
   const hiredCnaIds = new Set((bookings ?? []).map((b) => b.cna_id));
 
-  const items: ListItem[] = caregivers.map((c) => ({
-    id: c.user_id,
-    text: [c.display_name, c.headline, c.bio, ...(c.services ?? []), ...(c.languages ?? [])].filter(Boolean).join(' ').toLowerCase(),
-    nums: {
-      rate: c.hourly_rate_cents != null ? c.hourly_rate_cents / 100 : null,
-      hours: c.experience_hours ?? null,
-    },
-    tags: { services: c.services ?? [], languages: c.languages ?? [] },
-  }));
-  const uniq = (xs: string[]) => [...new Set(xs)].sort().map((x) => ({ value: x, label: x }));
-  const filters: ListFilter[] = [
-    { kind: 'max', key: 'rate', label: 'Hourly rate', prefix: '$', suffix: '/hr', min: 15, max: 60, step: 1 },
-    { kind: 'tags', key: 'services', label: 'Care they offer', options: uniq(caregivers.flatMap((c) => c.services ?? [])) },
-    { kind: 'tags', key: 'languages', label: 'Languages', options: uniq(caregivers.flatMap((c) => c.languages ?? [])) },
-  ];
+  const items = caregivers.map(caregiverItem);
+  const filters = caregiverFilters({
+    distanceHint: clientZip ? (
+      <>From your ZIP {clientZip}.</>
+    ) : (
+      <>Add your ZIP in <Link href="/client/setup" className="text-deepteal underline">your care details</Link> to filter by distance.</>
+    ),
+  });
 
   const cards: Record<string, React.ReactNode> = {};
   for (const c of caregivers) {
@@ -107,9 +111,10 @@ export default async function ClientBrowsePage() {
                   {c.hourly_rate_cents ? formatCents(c.hourly_rate_cents, { showFraction: false }) : '—'}
                   <span className="text-sm text-ink/50">/hr</span>
                 </div>
-                {c.years_experience != null && (
-                  <div className="text-[10px] text-ink/50 font-mono">{c.years_experience} yrs experience</div>
+                {c.credential && CRED_LABEL[c.credential] && (
+                  <div className="text-[10px] text-ink/50 font-mono">{CRED_LABEL[c.credential]}</div>
                 )}
+                {c.distance_mi != null && <div className="text-[10px] text-deepteal font-mono">~{c.distance_mi} mi away</div>}
               </div>
             </div>
             {c.bio && <p className="text-sm text-ink/75 mt-2 leading-relaxed line-clamp-2">{c.bio}</p>}
@@ -156,11 +161,8 @@ export default async function ClientBrowsePage() {
         items={items}
         cards={cards}
         filters={filters}
-        sorts={[
-          { key: 'best', label: 'Best fit' },
-          { key: 'rate', label: 'Lowest rate', by: 'rate', dir: 'asc' },
-          { key: 'hours', label: 'Most experience', by: 'hours', dir: 'desc' },
-        ]}
+        sorts={caregiverSorts(!!home)}
+        map={{ home }}
         searchPlaceholder="Search, e.g. dementia, Spanish"
         noun={['caregiver', 'caregivers']}
         listClassName="grid gap-4 lg:grid-cols-2"

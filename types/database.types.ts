@@ -1243,6 +1243,9 @@ export type Database = {
           city: string | null
           client_id: string
           created_at: string
+          days: string[]
+          end_time: string | null
+          start_time: string | null
           description: string
           end_date: string | null
           expires_at: string | null
@@ -1270,6 +1273,9 @@ export type Database = {
           city?: string | null
           client_id: string
           created_at?: string
+          days?: string[]
+          end_time?: string | null
+          start_time?: string | null
           description: string
           end_date?: string | null
           expires_at?: string | null
@@ -1297,6 +1303,9 @@ export type Database = {
           city?: string | null
           client_id?: string
           created_at?: string
+          days?: string[]
+          end_time?: string | null
+          start_time?: string | null
           description?: string
           end_date?: string | null
           expires_at?: string | null
@@ -2819,6 +2828,10 @@ export type Database = {
           services: string[]
           user_id: string
           years_experience: number
+          service_keys: string[]
+          credential: string | null
+          age_bracket: string | null
+          availability: Json
         }[]
       }
       browse_open_jobs: {
@@ -2840,6 +2853,10 @@ export type Database = {
           street_address: string
           title: string
           zip: string
+          days: string[]
+          start_time: string | null
+          end_time: string | null
+          recipient_age_bracket: string | null
         }[]
       }
       caregiver_cards: {

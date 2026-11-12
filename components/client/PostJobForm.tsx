@@ -13,6 +13,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { postJobAction, type PostJobResult } from '@/app/client/post-job/actions';
+import { DAYS } from '@/lib/careOptions';
 
 type Service = { key: string; label: string; category: string };
 
@@ -148,20 +149,31 @@ export function PostJobForm({
           </span>
         </div>
 
+        <label className="block text-xs font-medium text-ink/70 mb-2">Which days? (pick all that apply)</label>
+        <div className="flex flex-wrap gap-2 mb-5">
+          {DAYS.map((d) => (
+            <span key={d.value} className="day-chip">
+              <input type="checkbox" name="days" id={`day-${d.value}`} value={d.value} />
+              <label htmlFor={`day-${d.value}`}>{d.label}</label>
+            </span>
+          ))}
+        </div>
+
         <div className="grid md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-medium text-ink/70 mb-1.5">Start time</label>
-            <input type="time" defaultValue="09:00" className="w-full px-4 py-2.5 border border-ink/15 rounded-xl text-sm focus:outline-none focus:border-teal" />
+            <label htmlFor="start_time" className="block text-xs font-medium text-ink/70 mb-1.5">Start time</label>
+            <input id="start_time" name="start_time" type="time" className="w-full px-4 py-2.5 border border-ink/15 rounded-xl text-sm focus:outline-none focus:border-teal bg-white" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-ink/70 mb-1.5">End time</label>
-            <input type="time" defaultValue="13:00" className="w-full px-4 py-2.5 border border-ink/15 rounded-xl text-sm focus:outline-none focus:border-teal" />
+            <label htmlFor="end_time" className="block text-xs font-medium text-ink/70 mb-1.5">End time</label>
+            <input id="end_time" name="end_time" type="time" className="w-full px-4 py-2.5 border border-ink/15 rounded-xl text-sm focus:outline-none focus:border-teal bg-white" />
           </div>
           <div>
             <label className="block text-xs font-medium text-ink/70 mb-1.5">Hours per week</label>
             <input type="number" name="hours_per_week" min={1} max={168} placeholder="12" className="w-full px-4 py-2.5 border border-ink/15 rounded-xl text-sm focus:outline-none focus:border-teal" />
           </div>
         </div>
+        <p className="mt-2 text-xs text-ink/55">Overnight? Put an end time earlier than the start (e.g. 10 PM to 6 AM). Caregivers filter by days and time of day.</p>
       </div>
 
       {/* BUDGET */}

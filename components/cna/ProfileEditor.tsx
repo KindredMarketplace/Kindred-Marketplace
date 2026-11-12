@@ -6,19 +6,27 @@
 
 import { useActionState, useState } from 'react';
 import { saveProfileAction, type ProfileSaveState } from '@/app/cna/profile/actions';
+import { SERVICE_GROUPS, LANGUAGES, GENDERS, CAREGIVER_AGES } from '@/lib/careOptions';
 
 type Initial = {
   headline: string;
   bio: string;
   rate: string;
-  languages: string;
+  languages: string[];
+  services: string[];
+  gender: string;
+  age_bracket: string;
   service_zip: string;
   service_radius_miles: string;
 };
 
+const LISTED = new Set(LANGUAGES.map((l) => l.value));
+
 export function ProfileEditor({ initial }: { initial: Initial }) {
   const [state, action, pending] = useActionState<ProfileSaveState, FormData>(saveProfileAction, null);
   const [bioLen, setBioLen] = useState(initial.bio.length);
+  const [svc, setSvc] = useState<Set<string>>(() => new Set(initial.services));
+  const otherLangs = initial.languages.filter((l) => !LISTED.has(l)).join(', ');
   const err = (k: string) => state?.errors?.[k];
 
   const card = 'bg-white border border-ink/10 rounded-2xl p-6';
@@ -73,8 +81,9 @@ export function ProfileEditor({ initial }: { initial: Initial }) {
       </div>
 
       <div className={card}>
-        <div className={eyebrow}>Where and how</div>
-        <h3 className="font-display text-xl font-medium mb-3">Area and languages</h3>
+        <div className={eyebrow}>Where you work</div>
+        <h3 className="font-display text-xl font-medium mb-1">Your area</h3>
+        <p className="text-xs text-ink/55 mb-3">Families see roughly how far away you are (ZIP to ZIP), never your address.</p>
         <div className="grid sm:grid-cols-2 gap-4">
           <label className="block text-xs font-medium text-ink/70">
             Home ZIP code
@@ -87,10 +96,92 @@ export function ProfileEditor({ initial }: { initial: Initial }) {
             {err('service_radius_miles') && <span className="block mt-1 text-coral">{err('service_radius_miles')}</span>}
           </label>
         </div>
-        <label className="block text-xs font-medium text-ink/70 mt-4">
-          Languages you speak (separate with commas)
-          <input name="languages" defaultValue={initial.languages} placeholder="English, Español" className={`${input} mt-1.5`} />
+      </div>
+
+      <div className={card}>
+        <div className={eyebrow}>What you do</div>
+        <h3 className="font-display text-xl font-medium mb-1">Care you offer</h3>
+        <p className="text-xs text-ink/55 mb-4">
+          Families filter by these. Tick everything you&apos;re comfortable doing. {svc.size > 0 && <strong className="text-deepteal">{svc.size} chosen.</strong>}
+        </p>
+        <div className="space-y-4">
+          {SERVICE_GROUPS.map((g) => (
+            <fieldset key={g.key}>
+              <legend className="text-xs font-medium text-ink/70 mb-2">{g.label}</legend>
+              <div className="flex flex-wrap gap-2">
+                {g.options.map((o) => {
+                  const on = svc.has(o.value);
+                  return (
+                    <label
+                      key={o.value}
+                      className={`cursor-pointer select-none rounded-full border px-3.5 py-2 text-sm transition ${
+                        on ? 'bg-deepteal text-cream border-deepteal' : 'bg-white border-ink/15 hover:bg-mist'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        name="services"
+                        value={o.value}
+                        checked={on}
+                        onChange={() =>
+                          setSvc((prev) => {
+                            const next = new Set(prev);
+                            next.has(o.value) ? next.delete(o.value) : next.add(o.value);
+                            return next;
+                          })
+                        }
+                        className="sr-only"
+                      />
+                      {on ? '✓ ' : ''}
+                      {o.label}
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+          ))}
+        </div>
+      </div>
+
+      <div className={card}>
+        <div className={eyebrow}>About you</div>
+        <h3 className="font-display text-xl font-medium mb-1">Languages, gender and age</h3>
+        <p className="text-xs text-ink/55 mb-4">Some families look for these. Gender and age are optional; leave them blank if you&apos;d rather not say.</p>
+        <div className="text-xs font-medium text-ink/70 mb-2">Languages you speak</div>
+        <div className="flex flex-wrap gap-2">
+          {LANGUAGES.map((l) => (
+            <label key={l.value} className="cursor-pointer select-none">
+              <input type="checkbox" name="languages" value={l.value} defaultChecked={initial.languages.includes(l.value)} className="peer sr-only" />
+              <span className="inline-block rounded-full border border-ink/15 bg-white px-3.5 py-2 text-sm transition hover:bg-mist peer-checked:border-deepteal peer-checked:bg-deepteal peer-checked:text-cream peer-focus-visible:ring-2 peer-focus-visible:ring-teal">
+                {l.label}
+              </span>
+            </label>
+          ))}
+        </div>
+        <label className="block text-xs font-medium text-ink/70 mt-3">
+          Another language? (separate with commas)
+          <input name="languages_other" defaultValue={otherLangs} placeholder="e.g. Greek" className={`${input} mt-1.5`} />
         </label>
+        <div className="grid sm:grid-cols-2 gap-4 mt-4">
+          <label className="block text-xs font-medium text-ink/70">
+            Gender
+            <select name="gender" defaultValue={initial.gender} className={`${input} mt-1.5`}>
+              <option value="">Prefer not to say</option>
+              {GENDERS.map((g) => (
+                <option key={g.value} value={g.value}>{g.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs font-medium text-ink/70">
+            Age range
+            <select name="age_bracket" defaultValue={initial.age_bracket} className={`${input} mt-1.5`}>
+              <option value="">Prefer not to say</option>
+              {CAREGIVER_AGES.map((a) => (
+                <option key={a.value} value={a.value}>{a.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       <div className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-4 z-10 flex items-center justify-between gap-3 rounded-2xl bg-white/95 backdrop-blur border border-ink/10 p-3 shadow-lg">

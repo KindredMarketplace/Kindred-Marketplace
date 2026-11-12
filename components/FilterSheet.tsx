@@ -92,22 +92,36 @@ export function FilterSheet({
 }
 
 /** One labelled group inside the sheet. */
-export function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
+export function FilterGroup({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="mb-6">
-      <div className="text-sm font-medium mb-2.5">{label}</div>
+    <div className="mb-7">
+      <div className="text-sm font-medium mb-1">{label}</div>
+      {hint ? <div className="text-xs text-ink/55 mb-2.5">{hint}</div> : <div className="mb-1.5" />}
       {children}
     </div>
   );
 }
 
-export function ChipToggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+export function ChipToggle({
+  on,
+  onClick,
+  muted,
+  children,
+}: {
+  on: boolean;
+  onClick: () => void;
+  /** Nothing would match right now: still tappable, just quieter. */
+  muted?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className={`px-3.5 py-2 rounded-full text-sm border transition ${on ? 'bg-deepteal text-cream border-deepteal' : 'bg-white border-ink/15 hover:bg-mist'}`}
+      className={`px-3.5 py-2 rounded-full text-sm border transition ${
+        on ? 'bg-deepteal text-cream border-deepteal' : muted ? 'bg-white/60 border-ink/10 text-ink/45 hover:bg-mist' : 'bg-white border-ink/15 hover:bg-mist'
+      }`}
     >
       {children}
     </button>

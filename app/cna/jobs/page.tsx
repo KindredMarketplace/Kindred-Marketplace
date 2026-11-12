@@ -6,15 +6,19 @@
  * separate fetch of this CNA's existing applications so we can show "Applied ✓"
  * instead of "Apply now" on jobs they've already submitted to.
  *
- * Map view: visual placeholder for now. Real Mapbox pins are a later pass once
- * the Maps API key + geocoded job locations land.
+ * Filters (lib/listConfigs.ts): every option is listed, with counts, plus
+ * distance from the caregiver's own ZIP and a map. Distance and pins use ZIP
+ * code areas only (lib/geo.ts), never a street address.
  *
  * Shell (nav/footer) comes from app/cna/layout.tsx.
  */
 
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { FilterableList, type ListItem, type ListFilter } from '@/components/FilterableList';
+import { FilterableList } from '@/components/FilterableList';
+import { jobItem, jobFilters, jobSorts, type JobRow } from '@/lib/listConfigs';
+import { SERVICE_LABEL, JOB_TYPE_LABEL, RECIPIENT_AGES, formatDays, formatTime } from '@/lib/careOptions';
+import { zipPoint, milesBetween, pinPoint } from '@/lib/geo';
 import { JobApplyModal } from '@/components/cna/JobApplyModal';
 import { SaveJobButton } from '@/components/cna/SaveJobButton';
 import { formatCents } from '@/lib/utils/money';
@@ -24,12 +28,8 @@ import { getViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
-const SCHEDULE_LABEL: Record<string, string> = {
-  recurring: 'Recurring weekly',
-  one_time: 'One-time',
-  live_in: 'Live-in',
-  on_call: 'On-call',
-};
+const SCHEDULE_LABEL = JOB_TYPE_LABEL;
+const AGE_LABEL: Record<string, string> = Object.fromEntries(RECIPIENT_AGES.map((o) => [o.value, o.label]));
 
 function postedAgo(iso: string | null): string {
   if (!iso) return 'just now';
@@ -63,10 +63,15 @@ export default async function CnaJobsPage({ searchParams }: { searchParams: Prom
     supabase.rpc('browse_open_jobs'),
     viewingAs && user ? getAccessFor(supabase, user.id) : getMyAccess(supabase),
   ]);
-  // Saved (♡) jobs for this caregiver.
-  const { data: savedRows } = await supabase.from('saved_jobs').select('job_id').eq('cna_id', user.id);
+  // Saved (♡) jobs for this caregiver, and their home ZIP for distance.
+  const [{ data: savedRows }, { data: me }] = await Promise.all([
+    supabase.from('saved_jobs').select('job_id').eq('cna_id', user.id),
+    supabase.from('cna_profiles').select('service_zip').eq('user_id', user.id).maybeSingle(),
+  ]);
+  const myZip = me?.service_zip ?? null;
+  const home = zipPoint(myZip);
   const savedSet = new Set((savedRows ?? []).map((r) => r.job_id));
-  const allOpen = jobs ?? [];
+  const allOpen = (jobs ?? []) as (JobRow & { street_address: string | null; state: string | null })[];
   const savedOpenCount = allOpen.filter((j) => savedSet.has(j.id)).length;
   const jobList = (showSaved ? allOpen.filter((j) => savedSet.has(j.id)) : allOpen).slice(0, 50);
   const canApply = access?.is_listed === true;
@@ -83,27 +88,18 @@ export default async function CnaJobsPage({ searchParams }: { searchParams: Prom
     (myApps ?? []).forEach((a) => appliedSet.add(a.job_id));
   }
 
-  // Filters work on these (all real fields); cards are rendered here on the server.
-  const items: ListItem[] = jobList.map((job) => {
-    const pay = job.budget_max_cents ?? job.budget_min_cents;
-    return {
-      id: job.id,
-      text: [job.title, job.description, ...(job.services_needed ?? []), job.city, job.zip].filter(Boolean).join(' ').replace(/_/g, ' ').toLowerCase(),
-      nums: { pay: pay != null ? pay / 100 : null },
-      tags: { type: [job.schedule_type], services: job.services_needed ?? [] },
-      date: job.posted_at,
-    };
+  // Filters, sort and map work on these (all real fields); cards are rendered here on the server.
+  const items = jobList.map((job) =>
+    jobItem(job, { distance: milesBetween(home, zipPoint(job.zip)), point: pinPoint(job.zip, job.id) })
+  );
+  const distById = new Map(items.map((i) => [i.id, i.nums.distance]));
+  const filters = jobFilters({
+    distanceHint: myZip ? (
+      <>From your ZIP {myZip}. <Link href="/cna/profile" className="text-deepteal underline">Change</Link></>
+    ) : (
+      <>Add your home ZIP on <Link href="/cna/profile" className="text-deepteal underline">your profile</Link> to filter by distance.</>
+    ),
   });
-  const typeOptions = [...new Set(jobList.map((j) => j.schedule_type))].map((t) => ({ value: t, label: SCHEDULE_LABEL[t] ?? t }));
-  const serviceOptions = [...new Set(jobList.flatMap((j) => j.services_needed ?? []))]
-    .sort()
-    .map((t: string) => ({ value: t, label: t.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) }));
-  const filters: ListFilter[] = [
-    { kind: 'min', key: 'pay', label: 'Pay', prefix: '$', suffix: '/hr', min: 15, max: 50, step: 1 },
-    { kind: 'tags', key: 'type', label: 'Type of job', options: typeOptions },
-    { kind: 'tags', key: 'services', label: 'Care needed', options: serviceOptions },
-    { kind: 'recent', label: 'Posted', options: [{ days: 1, label: 'Today' }, { days: 7, label: 'This week' }, { days: 30, label: 'This month' }] },
-  ];
 
   const cards: Record<string, React.ReactNode> = {};
   for (const job of jobList) {
@@ -131,13 +127,28 @@ export default async function CnaJobsPage({ searchParams }: { searchParams: Prom
                 <div className="text-[10px] text-ink/50 font-mono">
                   {job.hours_per_week ? `${job.hours_per_week} hrs/week` : SCHEDULE_LABEL[job.schedule_type] ?? job.schedule_type}
                 </div>
+                {distById.get(job.id) != null && (
+                  <div className="text-[10px] text-deepteal font-mono">~{distById.get(job.id)} mi away</div>
+                )}
               </div>
             </div>
+            {(job.days?.length || job.start_time || job.recipient_age_bracket) && (
+              <div className="text-xs text-ink/65 mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                {(job.days?.length || job.start_time) && (
+                  <span>
+                    🗓 {SCHEDULE_LABEL[job.schedule_type]}
+                    {job.days?.length ? ` · ${formatDays(job.days)}` : ''}
+                    {job.start_time && job.end_time ? ` · ${formatTime(job.start_time)}–${formatTime(job.end_time)}` : ''}
+                  </span>
+                )}
+                {job.recipient_age_bracket && <span>👤 Age {AGE_LABEL[job.recipient_age_bracket] ?? job.recipient_age_bracket}</span>}
+              </div>
+            )}
             <p className="text-sm text-ink/75 mt-2 leading-relaxed line-clamp-3">{job.description}</p>
             <div className="flex flex-wrap gap-1.5 mt-3">
               {(job.services_needed ?? []).slice(0, 4).map((t: string) => (
                 <span key={t} className="text-[10px] bg-mist/70 px-2.5 py-1 rounded-full border border-teal/20">
-                  {t.replace(/_/g, ' ')}
+                  {SERVICE_LABEL[t] ?? t.replace(/_/g, ' ')}
                 </span>
               ))}
               <span className="text-[10px] bg-coral/15 text-coral px-2.5 py-1 rounded-full border border-coral/30 font-medium">
@@ -185,10 +196,8 @@ export default async function CnaJobsPage({ searchParams }: { searchParams: Prom
         items={items}
         cards={cards}
         filters={filters}
-        sorts={[
-          { key: 'newest', label: 'Newest', by: 'date', dir: 'desc' },
-          { key: 'pay', label: 'Highest pay', by: 'pay', dir: 'desc' },
-        ]}
+        sorts={jobSorts(!!home)}
+        map={{ home }}
         searchPlaceholder="Search jobs, e.g. dementia, evenings"
         noun={['job', 'jobs']}
         listClassName="grid gap-4 lg:grid-cols-2"
