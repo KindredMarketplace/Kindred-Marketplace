@@ -8,7 +8,8 @@
  *   - CNA redirects to /apply (the real application flow).
  *   - Business shows a "coming after launch" message and can't proceed.
  *
- * Step 2: Username + full name + password. No email required for now.
+ * Step 2: Name + username + email + password. The email is what "Forgot
+ * password" uses; people can log in with the username or the email.
  */
 
 import { useState, useTransition, useEffect } from 'react';
@@ -171,7 +172,7 @@ export default function SignupPage() {
                 <span>👨‍👩‍👧</span> Family account
               </div>
               <h1 className="font-display text-4xl font-medium tracking-tight mb-2">Create your account</h1>
-              <p className="text-ink/60 text-sm">Pick a username and password — no email needed right now.</p>
+              <p className="text-ink/60 text-sm">Pick a username, add your email, and choose a password.</p>
             </div>
 
             {result && !result.ok && (
@@ -221,6 +222,28 @@ export default function SignupPage() {
                 <p className="mt-1 text-xs text-ink/45">Letters, numbers, and underscores only. 3–30 characters.</p>
                 {result && !result.ok && result.fieldErrors?.username && (
                   <p className="mt-1 text-xs text-coral">{result.fieldErrors.username}</p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium mb-1.5">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  required
+                  className="w-full rounded-xl border border-ink/20 bg-white px-4 py-2.5 text-ink placeholder:text-ink/35 focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/20"
+                  placeholder="you@email.com"
+                />
+                <p className="mt-1 text-xs text-ink/45">Only used to sign in and to reset your password. Never shown to anyone.</p>
+                {result && !result.ok && result.fieldErrors?.email && (
+                  <p className="mt-1 text-xs text-coral">{result.fieldErrors.email}</p>
                 )}
               </div>
 

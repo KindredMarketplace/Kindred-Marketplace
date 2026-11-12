@@ -48,6 +48,7 @@ const PUBLIC_ROUTES = [
   '/manifest.webmanifest',
   '/post-job',
   '/auth/callback',
+  '/auth/confirm',
 ];
 
 function isPublicRoute(pathname: string): boolean {

@@ -628,3 +628,16 @@
   box-shadow: 0 0 0 6px rgba(232, 155, 133, 0.25);
 }
 .maplibregl-ctrl-attrib { font-size: 10px; }
+
+/* ---------- Form field used by the settings forms (AccountForm, ChangePasswordForm) ---------- */
+.kfield {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(31, 58, 61, 0.15);
+  background: #fff;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  color: #1F3A3D;
+}
+.kfield:focus { outline: none; border-color: #5ba9b8; box-shadow: 0 0 0 3px rgba(91, 169, 184, 0.2); }
+.kfield[readonly] { background: #F2EFE8; }

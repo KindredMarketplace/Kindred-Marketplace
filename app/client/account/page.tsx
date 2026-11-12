@@ -6,7 +6,7 @@
  * sign-in email shown read-only, membership link, close account (live, with
  * a confirm step), sign out. Everything else is clearly marked "Coming soon"
  * and disabled, so nothing pretends to save: notifications arrive with the
- * notifications system (Phase 4); password change, two-step sign-in, family
+ * notifications system (Phase 4); two-step sign-in, family
  * access and data download after that.
  *
  * The care details (who needs care, care types, budget) live at /client/profile.
@@ -19,6 +19,7 @@ import { initials, avatarClass } from '@/lib/utils/avatar';
 import { getViewer } from '@/lib/viewer';
 import { AvatarUpload } from '@/components/cna/AvatarUpload';
 import { AccountForm } from '@/components/cna/AccountForm';
+import { ChangePasswordForm } from '@/components/ChangePasswordForm';
 import { CloseAccountButton } from '@/components/client/CloseAccountButton';
 
 export const dynamic = 'force-dynamic';
@@ -160,19 +161,20 @@ export default async function ClientAccountPage() {
           </div>
 
           <div id="security" className={card}>
-            <SectionHead title="Security & sign-in" sub="Lock down your account." soon />
+            <SectionHead title="Security & sign-in" sub="Lock down your account." />
             <div className="space-y-4">
+              <div className="border-b border-ink/10 pb-4">
+                <ChangePasswordForm />
+              </div>
               {[
-                { title: 'Change password', sub: 'For now, email us through Help and we’ll reset it for you.' },
                 { title: 'Two-step sign-in', sub: 'A code by text or an authenticator app' },
                 { title: 'Where you’re signed in', sub: 'See and sign out other devices' },
               ].map((row, i, arr) => (
                 <div key={row.title} className={`flex items-center justify-between gap-3 ${i < arr.length - 1 ? 'border-b border-ink/10 pb-4' : ''}`}>
                   <div className="min-w-0">
-                    <div className="font-medium text-sm">{row.title}</div>
+                    <div className="font-medium text-sm flex items-center gap-2">{row.title} <ComingSoon /></div>
                     <div className="text-xs text-ink/60">{row.sub}</div>
                   </div>
-                  <button disabled className="shrink-0 text-sm px-4 py-2 border border-ink/15 rounded-full opacity-50">Soon</button>
                 </div>
               ))}
             </div>

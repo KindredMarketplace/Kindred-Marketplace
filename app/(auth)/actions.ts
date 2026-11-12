@@ -3,14 +3,15 @@
 /**
  * Server actions for auth — login, signup, logout.
  *
- * USERNAME-BASED AUTH
- * -------------------
- * Supabase Auth requires an email address internally. Since we're using
- * usernames instead of emails for now, we synthesize a fake address:
- *   {username}@kindred.internal
+ * USERNAME + EMAIL
+ * ----------------
+ * Since Nov 12, 2026 every new account has a real email (so "Forgot
+ * password" can reach them) plus a username. People can log in with either:
+ * a username is looked up to its account email on the server.
  *
- * This address is never shown to the user and never emailed. When we add
- * real email support later, we'll add an `email` field and migrate.
+ * Older family test accounts were created with a synthetic address,
+ * {username}@kindred.internal, which is never emailed; those still log in
+ * with their username, and an admin can reset their password from People.
  *
  * IMPORTANT: Email confirmations must be disabled in the Supabase dashboard
  * (Authentication → Settings → "Enable email confirmations" → OFF) for this
@@ -29,6 +30,25 @@ import { z } from 'zod';
 /** Converts a username to the synthetic internal email we store in auth.users. */
 function toInternalEmail(username: string) {
   return `${username.toLowerCase().trim()}@kindred.internal`;
+}
+
+/**
+ * The sign-in email behind a username (server only; never returned to the
+ * browser). Falls back to the old synthetic address for accounts made
+ * before real emails were collected.
+ */
+async function emailForUsername(username: string): Promise<string> {
+  try {
+    const { data } = await createServiceClient()
+      .from('users')
+      .select('email')
+      .ilike('username', username.trim())
+      .maybeSingle();
+    if (data?.email) return data.email.toLowerCase();
+  } catch {
+    // fall through
+  }
+  return toInternalEmail(username);
 }
 
 // ---------------------------------------------------------------------------
@@ -66,6 +86,7 @@ const LoginSchema = z.object({
 
 const SignupSchema = z.object({
   username: UsernameSchema,
+  email: z.string().trim().toLowerCase().email('Enter a valid email address.').max(254),
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters.')
@@ -102,9 +123,7 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
 
   // Email login (admin / staff / demo accounts) vs username login (CNAs / families).
   const identifier = parsed.data.username.trim();
-  const email = identifier.includes('@')
-    ? identifier.toLowerCase()
-    : toInternalEmail(identifier);
+  const email = identifier.includes('@') ? identifier.toLowerCase() : await emailForUsername(identifier);
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
@@ -163,12 +182,13 @@ export type SignupResult =
   | {
       ok: false;
       error: string;
-      fieldErrors?: Partial<Record<'username' | 'password' | 'full_name' | 'role', string>>;
+      fieldErrors?: Partial<Record<'username' | 'email' | 'password' | 'full_name' | 'role', string>>;
     };
 
 export async function signupAction(formData: FormData): Promise<SignupResult> {
   const raw = {
     username: formData.get('username')?.toString() ?? '',
+    email: formData.get('email')?.toString() ?? '',
     password: formData.get('password')?.toString() ?? '',
     full_name: formData.get('full_name')?.toString() ?? '',
     role: formData.get('role')?.toString() ?? '',
@@ -202,7 +222,7 @@ export async function signupAction(formData: FormData): Promise<SignupResult> {
 
   // Create the auth user. Email confirmations should be OFF in Supabase dashboard.
   const { data, error } = await supabase.auth.signUp({
-    email: toInternalEmail(parsed.data.username),
+    email: parsed.data.email,
     password: parsed.data.password,
     options: {
       data: {
@@ -210,7 +230,7 @@ export async function signupAction(formData: FormData): Promise<SignupResult> {
         role: parsed.data.role,
         username: parsed.data.username,
       },
-      // No emailRedirectTo — we're not sending confirmation emails.
+      // Email confirmation is off for now (no custom email sender yet).
     },
   });
 
@@ -218,8 +238,8 @@ export async function signupAction(formData: FormData): Promise<SignupResult> {
     if (error.message.toLowerCase().includes('already registered')) {
       return {
         ok: false,
-        error: 'That username is already taken. Please choose another.',
-        fieldErrors: { username: 'Already taken.' },
+        error: 'There’s already an account with that email. Try logging in, or use Forgot password.',
+        fieldErrors: { email: 'Already in use.' },
       };
     }
     return { ok: false, error: error.message };
