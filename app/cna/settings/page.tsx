@@ -90,9 +90,9 @@ export default async function CnaSettingsPage() {
         <p className="text-ink/70 mt-2 max-w-2xl">Your photo, your details, and how Kindred reaches you.</p>
       </section>
 
-      <div className="grid lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* SECTION LINKS: chips on phones, sidebar on desktop */}
-        <aside className="lg:col-span-3 lg:sticky lg:top-24 lg:self-start fade-up" style={{ animationDelay: '.05s' }}>
+        <aside className="min-w-0 lg:col-span-3 lg:sticky lg:top-24 lg:self-start fade-up" style={{ animationDelay: '.05s' }}>
           <nav
             aria-label="Settings sections"
             className="-mx-4 px-4 lg:mx-0 lg:px-3 lg:py-3 flex lg:flex-col gap-2 lg:gap-1 overflow-x-auto lg:overflow-visible lg:bg-white lg:border lg:border-ink/10 lg:rounded-2xl pb-1 lg:pb-3 [scrollbar-width:none]"
@@ -117,7 +117,7 @@ export default async function CnaSettingsPage() {
         </aside>
 
         {/* CONTENT */}
-        <section className="lg:col-span-9 space-y-6 fade-up" style={{ animationDelay: '.1s' }}>
+        <section className="min-w-0 lg:col-span-9 space-y-6 fade-up" style={{ animationDelay: '.1s' }}>
           {/* ACCOUNT (works) */}
           <div id="account" className={card}>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 mb-8 pb-6 border-b border-ink/10">

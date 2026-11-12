@@ -38,9 +38,12 @@ function LoginForm() {
   return (
     <div className="min-h-screen bg-cream flex flex-col">
       {/* Header */}
-      <header className="px-6 py-5 border-b border-ink/10">
-        <Link href="/" className="flex items-center gap-2.5">
+      <header className="px-6 py-5 border-b border-ink/10 flex items-center justify-between gap-4">
+        <Link href="/" className="flex items-center gap-2.5 shrink-0">
           <KindredWordmark height={34} />
+        </Link>
+        <Link href="/browse" className="text-sm text-deepteal font-medium hover:text-coral whitespace-nowrap">
+          Browse <span className="hidden sm:inline">without logging in </span>→
         </Link>
       </header>
 
@@ -114,6 +117,20 @@ function LoginForm() {
               {isPending ? 'Logging in…' : 'Log in'}
             </button>
           </form>
+
+          {/* Just looking: no account needed to browse */}
+          <div className="my-6 flex items-center gap-3 text-xs text-ink/40" aria-hidden="true">
+            <span className="h-px flex-1 bg-ink/10" />
+            or
+            <span className="h-px flex-1 bg-ink/10" />
+          </div>
+          <Link
+            href="/browse"
+            className="block w-full rounded-xl border border-ink/20 bg-white px-4 py-2.5 text-center font-medium text-ink transition hover:border-teal hover:bg-mist"
+          >
+            👀 Browse without logging in
+          </Link>
+          <p className="mt-2 text-center text-xs text-ink/50">See caregivers and how Kindred works. No account needed.</p>
 
           <p className="mt-6 text-center text-sm text-ink/60">
             New to Kindred?{' '}
